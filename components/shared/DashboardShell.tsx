@@ -6,8 +6,10 @@ import { motion } from "framer-motion";
 import {
   Bell,
   BookOpen,
+  BookOpenCheck,
   Bus,
   CalendarDays,
+  CreditCard,
   GraduationCap,
   Home,
   LayoutDashboard,
@@ -33,6 +35,8 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   super_admin: [
     { href: "/super-admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/super-admin/colleges", label: "Colleges", icon: GraduationCap },
+    { href: "/super-admin/fees", label: "Fees Collection", icon: CreditCard },
+    { href: "/super-admin/library", label: "Library", icon: BookOpenCheck },
     { href: "/super-admin/analytics", label: "Analytics", icon: LayoutDashboard },
     { href: "/super-admin/ai-assistant", label: "AI Assistant", icon: Sparkles },
     { href: "/super-admin/notifications", label: "Notifications", icon: Bell },
@@ -41,6 +45,8 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
   college_admin: [
     { href: "/college-admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/college-admin/fees", label: "Fees Management", icon: CreditCard },
+    { href: "/college-admin/library", label: "Library", icon: BookOpenCheck },
     { href: "/college-admin/students", label: "Students", icon: Users },
     { href: "/college-admin/faculty", label: "Faculty", icon: BookOpen },
     { href: "/college-admin/parents", label: "Parents", icon: Users },
@@ -72,6 +78,8 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
   student: [
     { href: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/student/fees", label: "My Fees", icon: CreditCard },
+    { href: "/student/library", label: "Library", icon: BookOpenCheck },
     { href: "/student/hostel", label: "Hostel & Room", icon: Home },
     { href: "/student/assignments", label: "Assignments", icon: BookOpen },
     { href: "/student/results", label: "Results", icon: BookOpen },
@@ -86,6 +94,8 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
   parent: [
     { href: "/parent/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/parent/fees", label: "Child Fees", icon: CreditCard },
+    { href: "/parent/library", label: "Library", icon: BookOpenCheck },
     { href: "/parent/children", label: "My Children", icon: Users },
     { href: "/parent/attendance", label: "Attendance", icon: Users },
     { href: "/parent/results", label: "Results", icon: BookOpen },
