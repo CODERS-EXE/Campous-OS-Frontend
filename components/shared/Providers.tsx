@@ -2,13 +2,20 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import { TenantThemeProvider } from "@/components/shared/TenantThemeProvider";
 import { WebSocketProvider } from "@/lib/contexts/WebSocketContext";
+import { useAuthStore } from "@/lib/store/auth";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  const hydrateApi = useAuthStore((state) => state.hydrateApi);
+
+  // Hydrate API client with auth token on mount
+  useEffect(() => {
+    hydrateApi();
+  }, [hydrateApi]);
 
   return (
     <QueryClientProvider client={queryClient}>

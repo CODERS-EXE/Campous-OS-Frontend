@@ -26,6 +26,7 @@ import {
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CampusLogo } from "@/components/shared/CampusLogo";
 import { cn, getRoleDashboardPath } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth";
 import { NotificationBadge } from "@/components/shared/NotificationBadge";
@@ -146,13 +147,14 @@ export function DashboardShell({
   const items = user ? NAV_ITEMS[user.role] || [] : [];
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-background">
       {/* Mobile header */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 lg:hidden">
+      <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 px-4 lg:hidden shadow-sm">
         <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
           <Menu className="h-5 w-5" />
         </Button>
-        <span className="font-semibold">{college?.name || "CampusOS"}</span>
+        <CampusLogo variant="icon" className="h-8 w-8" />
+        <span className="font-heading font-semibold text-lg">{college?.name || "CampusOS"}</span>
         <div className="ml-auto">
           <NotificationBadge />
         </div>
@@ -161,61 +163,96 @@ export function DashboardShell({
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <motion.aside
             initial={{ x: -280 }}
             animate={{ x: 0 }}
-            className="absolute left-0 top-0 h-full w-72 bg-background p-4 shadow-xl"
+            transition={{ type: "spring", damping: 30 }}
+            className="absolute left-0 top-0 h-full w-72 bg-card border-r shadow-2xl flex flex-col"
           >
-            <div className="mb-6 flex items-center justify-between">
-              <span className="font-bold text-tenant">CampusOS</span>
+            <div className="h-16 border-b px-6 flex items-center justify-between">
+              <CampusLogo />
               <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <NavLinks items={items} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            <div className="flex-1 overflow-y-auto p-4">
+              <NavLinks items={items} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            </div>
+            <div className="border-t p-4 bg-muted/30">
+              <div className="mb-3 rounded-lg bg-card p-3">
+                <p className="font-medium text-sm">{user?.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role.replace("_", " ")}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="shrink-0"
+                >
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </Button>
+              </div>
+            </div>
           </motion.aside>
         </div>
       )}
 
       <div className="flex">
         {/* Desktop sidebar */}
-        <aside className="hidden min-h-screen w-64 shrink-0 border-r bg-background lg:block lg:sticky lg:top-0 lg:h-screen">
+        <aside className="hidden min-h-screen w-72 shrink-0 border-r bg-card lg:block lg:sticky lg:top-0 lg:h-screen">
           <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center border-b px-6">
-            <Link href={user ? getRoleDashboardPath(user.role) : "/"} className="font-bold text-tenant">
-              {college?.name || "CampusOS"}
-            </Link>
-          </div>
-          <div className="flex-1 p-4">
-            <NavLinks items={items} pathname={pathname} />
-          </div>
-          <div className="mt-auto border-t p-4">
-            <div className="mb-3 text-sm">
-              <p className="font-medium">{user?.name}</p>
-              <p className="text-muted-foreground capitalize">{user?.role.replace("_", " ")}</p>
+            <div className="flex h-16 items-center border-b px-6">
+              <Link href={user ? getRoleDashboardPath(user.role) : "/"} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+                <CampusLogo variant="icon" className="h-8 w-8" />
+                <div className="flex flex-col">
+                  <span className="font-heading font-bold text-sm gradient-text">CampusOS</span>
+                  <span className="text-xs text-muted-foreground truncate max-w-[140px]">{college?.name}</span>
+                </div>
+              </Link>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" /> Logout
-              </Button>
+            <div className="flex-1 overflow-y-auto p-4">
+              <NavLinks items={items} pathname={pathname} />
             </div>
-          </div>
+            <div className="border-t p-4 bg-muted/30">
+              <div className="mb-3 rounded-lg bg-gradient-primary/10 border border-primary/20 p-3">
+                <p className="font-medium text-sm">{user?.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role.replace("_", " ")}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="shrink-0"
+                >
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </Button>
+              </div>
+            </div>
           </div>
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 p-4 md:p-8">
-          <div className="mb-6 flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-            <div className="hidden lg:flex">
-              <NotificationBadge />
+        <main className="flex-1 overflow-x-hidden">
+          <div className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex h-16 items-center justify-between px-4 md:px-8">
+              <h1 className="font-heading text-2xl font-bold tracking-tight">{title}</h1>
+              <div className="hidden lg:flex">
+                <NotificationBadge />
+              </div>
             </div>
           </div>
-          {children}
+          <div className="p-4 md:p-8">
+            {children}
+          </div>
         </main>
       </div>
       <AiAssistant />
@@ -234,22 +271,28 @@ function NavLinks({
 }) {
   return (
     <nav className="space-y-1">
-      {items.map(({ href, label, icon: Icon }) => (
-        <Link
-          key={href}
-          href={href}
-          onClick={onNavigate}
-          className={cn(
-            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-            pathname === href
-              ? "bg-tenant/10 text-tenant"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-        >
-          <Icon className="h-4 w-4" />
-          {label}
-        </Link>
-      ))}
+      {items.map(({ href, label, icon: Icon }) => {
+        const isActive = pathname === href;
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={onNavigate}
+            className={cn(
+              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              isActive
+                ? "bg-gradient-primary text-white shadow-brand"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            <Icon className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              isActive ? "scale-110" : "group-hover:scale-105"
+            )} />
+            <span>{label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }
