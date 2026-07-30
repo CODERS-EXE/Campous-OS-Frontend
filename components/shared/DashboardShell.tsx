@@ -35,6 +35,7 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   super_admin: [
     { href: "/super-admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/super-admin/colleges", label: "Colleges", icon: GraduationCap },
+    { href: "/super-admin/exam-analytics", label: "Exam Analytics", icon: BookOpen },
     { href: "/super-admin/fees", label: "Fees Collection", icon: CreditCard },
     { href: "/super-admin/library", label: "Library", icon: BookOpenCheck },
     { href: "/super-admin/analytics", label: "Analytics", icon: LayoutDashboard },
@@ -45,6 +46,9 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
   college_admin: [
     { href: "/college-admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/college-admin/exams", label: "Exams", icon: BookOpen },
+    { href: "/college-admin/exam-schedule", label: "Exam Schedule", icon: CalendarDays },
+    { href: "/college-admin/exam-results", label: "Results", icon: BookOpenCheck },
     { href: "/college-admin/fees", label: "Fees Management", icon: CreditCard },
     { href: "/college-admin/library", label: "Library", icon: BookOpenCheck },
     { href: "/college-admin/students", label: "Students", icon: Users },
@@ -67,6 +71,8 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
   faculty: [
     { href: "/faculty/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/faculty/exams", label: "My Exams", icon: BookOpen },
+    { href: "/faculty/marks-entry", label: "Marks Entry", icon: BookOpenCheck },
     { href: "/faculty/attendance", label: "Attendance", icon: Users },
     { href: "/faculty/students", label: "Students", icon: Users },
     { href: "/faculty/assignments", label: "Assignments", icon: BookOpen },
@@ -78,6 +84,8 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
   student: [
     { href: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/student/hall-ticket", label: "Hall Ticket", icon: BookOpenCheck },
+    { href: "/student/exam-results", label: "Exam Results", icon: BookOpen },
     { href: "/student/fees", label: "My Fees", icon: CreditCard },
     { href: "/student/library", label: "Library", icon: BookOpenCheck },
     { href: "/student/hostel", label: "Hostel & Room", icon: Home },
@@ -94,6 +102,7 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
   parent: [
     { href: "/parent/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/parent/exam-results", label: "Exam Results", icon: BookOpen },
     { href: "/parent/fees", label: "Child Fees", icon: CreditCard },
     { href: "/parent/library", label: "Library", icon: BookOpenCheck },
     { href: "/parent/children", label: "My Children", icon: Users },

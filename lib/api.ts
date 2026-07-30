@@ -431,14 +431,15 @@ export interface TimetableEntry {
 
 export interface Faculty {
   id: string;
+  user_id: string;
   name: string;
   email: string;
-  role: string;
   department: string;
   course?: string;
   designation?: string;
   status?: string;
   subjects: string[];
+  avatar_url?: string;
   created_at?: string;
 }
 
@@ -499,9 +500,67 @@ export interface Notification {
   id: string;
   title: string;
   body: string;
-  priority: string;
+  type:
+    | "assignment"
+    | "attendance"
+    | "results"
+    | "fee_reminder"
+    | "outpass"
+    | "hostel_room"
+    | "announcement"
+    | "broadcast"
+    | "placement"
+    | "exam_schedule"
+    | "timetable"
+    | "leave"
+    | "event"
+    | "deadline"
+    | "system"
+    | "general";
+  priority: "low" | "normal" | "high" | "urgent";
   created_at: string;
   is_read: boolean;
+  action_url?: string;
+  event_metadata?: Record<string, unknown>;
+}
+
+export interface NotificationCount {
+  total: number;
+  unread_count: number;
+}
+
+export interface NotificationAnalytics {
+  total_sent: number;
+  total_read: number;
+  total_unread: number;
+  read_rate: number;
+  type_breakdown: Record<string, number>;
+  priority_breakdown: Record<string, number>;
+  active_connections: number;
+}
+
+export interface NotificationCreatePayload {
+  title: string;
+  body: string;
+  type?: string;
+  priority?: string;
+  target_scope?: "all" | "department" | "role" | "user";
+  role?: string;
+  department?: string;
+  action_url?: string;
+  event_metadata?: Record<string, unknown>;
+}
+
+export interface NotificationBroadcastPayload {
+  title: string;
+  body: string;
+  type?: string;
+  priority?: string;
+  target_scope?: "all" | "college" | "role";
+  target_roles?: string[];
+  college_id?: string;
+  action_url?: string;
+  event_metadata?: Record<string, unknown>;
 }
 
 export interface Room {
@@ -1160,4 +1219,228 @@ export interface PlacementStats {
   lowest_package: number;
   placement_percentage: number;
   total_students: number;
+}
+
+
+// ============================================================================
+// EXAM MANAGEMENT INTERFACES
+// ============================================================================
+
+export interface Exam {
+  id: string;
+  name: string;
+  exam_type: "internal" | "mid_term" | "end_term" | "supplementary";
+  academic_year: string;
+  semester: number;
+  start_date: string;
+  end_date: string;
+  status: "scheduled" | "ongoing" | "completed" | "cancelled";
+  description?: string;
+  college_id: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  total_subjects: number;
+  total_students: number;
+  results_published: boolean;
+  published_at?: string;
+}
+
+export interface SubjectExam {
+  id: string;
+  exam_id: string;
+  subject_id: string;
+  subject_name: string;
+  subject_code: string;
+  exam_date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  room_numbers: string[];
+  invigilators: string[];
+  max_marks: number;
+  internal_marks_weight: number;
+  external_marks_weight: number;
+  passing_marks: number;
+  credits: number;
+  status: "scheduled" | "ongoing" | "completed" | "cancelled";
+  college_id: string;
+  created_at: string;
+  updated_at: string;
+  enrolled_students: number;
+  appeared_students: number;
+  passed_students: number;
+}
+
+export interface QuestionSection {
+  section_name: string;
+  instructions: string;
+  marks: number;
+}
+
+export interface QuestionPaper {
+  id: string;
+  subject_exam_id: string;
+  paper_code: string;
+  paper_title: string;
+  paper_url?: string;
+  total_marks: number;
+  total_questions: number;
+  sections: QuestionSection[];
+  general_instructions: string;
+  time_allowed_minutes: number;
+  has_objective: boolean;
+  has_subjective: boolean;
+  has_practical: boolean;
+  is_confidential: boolean;
+  accessible_from?: string;
+  college_id: string;
+  created_at: string;
+  updated_at: string;
+  uploaded_by?: string;
+}
+
+export interface StudentExam {
+  id: string;
+  subject_exam_id: string;
+  exam_id: string;
+  student_id: string;
+  student_name: string;
+  student_roll_number: string;
+  hall_ticket_number: string;
+  seat_number?: string;
+  room_number?: string;
+  attendance: "present" | "absent" | "not_marked";
+  attendance_marked_at?: string;
+  attendance_marked_by?: string;
+  internal_marks?: number;
+  external_marks?: number;
+  total_marks?: number;
+  grade?: string;
+  grade_points?: number;
+  result_status: "pass" | "fail" | "absent" | "pending";
+  internal_marks_entered_by?: string;
+  external_marks_entered_by?: string;
+  internal_marks_entered_at?: string;
+  external_marks_entered_at?: string;
+  remarks?: string;
+  is_improvement_exam: boolean;
+  attempt_number: number;
+  college_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubjectResult {
+  subject_exam_id: string;
+  subject_name: string;
+  subject_code: string;
+  credits: number;
+  internal_marks?: number;
+  external_marks?: number;
+  total_marks?: number;
+  grade?: string;
+  grade_points?: number;
+  result_status: "pass" | "fail" | "absent" | "pending";
+}
+
+export interface ExamResult {
+  id: string;
+  exam_id: string;
+  student_id: string;
+  student_name: string;
+  student_roll_number: string;
+  student_email?: string;
+  academic_year: string;
+  semester: number;
+  branch: string;
+  subjects: SubjectResult[];
+  total_subjects: number;
+  subjects_passed: number;
+  subjects_failed: number;
+  total_credits: number;
+  credits_earned: number;
+  sgpa?: number;
+  cgpa?: number;
+  percentage?: number;
+  result_status: "pass" | "fail" | "pending" | "withheld";
+  has_backlogs: boolean;
+  backlog_count: number;
+  is_published: boolean;
+  published_at?: string;
+  published_by?: string;
+  rank?: number;
+  college_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GradeRange {
+  grade: string;
+  min_marks: number;
+  max_marks: number;
+  grade_points: number;
+  description: string;
+}
+
+export interface GradeScale {
+  id: string;
+  college_id: string;
+  scale_name: string;
+  description: string;
+  ranges: GradeRange[];
+  max_grade_points: number;
+  passing_grade_points: number;
+  is_active: boolean;
+  effective_from: string;
+  effective_to?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface HallTicket {
+  hall_ticket_number: string;
+  exam_name: string;
+  academic_year: string;
+  semester: number;
+  student_name: string;
+  student_roll_number: string;
+  subjects: {
+    subject_name: string;
+    subject_code: string;
+    exam_date: string;
+    start_time: string;
+    end_time: string;
+    room_number?: string;
+    seat_number?: string;
+  }[];
+}
+
+export interface ExamAnalytics {
+  total_exams: number;
+  completed_exams: number;
+  ongoing_exams: number;
+  scheduled_exams: number;
+  total_students: number;
+  total_results: number;
+  passed_students: number;
+  failed_students: number;
+  pass_percentage: number;
+  students_with_backlogs: number;
+  average_sgpa: number;
+  average_cgpa: number;
+}
+
+export interface SubjectPerformance {
+  subject_name: string;
+  subject_code: string;
+  total_students: number;
+  appeared: number;
+  passed: number;
+  failed: number;
+  absent: number;
+  pass_percentage: number;
+  average_marks: number;
+  max_marks: number;
 }

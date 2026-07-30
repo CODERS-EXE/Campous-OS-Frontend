@@ -125,7 +125,7 @@ export default function FacultyPage() {
 
     if (selectedFaculty) {
       updateMutation.mutate({
-        id: selectedFaculty.id,
+        id: selectedFaculty.user_id,
         payload: {
           name: form.name,
           email: form.email,
@@ -159,7 +159,7 @@ export default function FacultyPage() {
 
   const handleDelete = (facultyMember: Faculty) => {
     if (window.confirm(`Delete faculty ${facultyMember.name}?`)) {
-      deleteMutation.mutate(facultyMember.id);
+      deleteMutation.mutate(facultyMember.user_id);
     }
   };
 
