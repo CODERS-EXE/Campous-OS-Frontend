@@ -1,0 +1,11 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/college-admin/settings/page": "app/college-admin/settings/page.js",
+  "/super-admin/analytics/page": "app/super-admin/analytics/page.js",
+  "/super-admin/notifications/page": "app/super-admin/notifications/page.js",
+  "/super-admin/profile/page": "app/super-admin/profile/page.js",
+  "/super-admin/ai-assistant/page": "app/super-admin/ai-assistant/page.js",
+  "/super-admin/colleges/page": "app/super-admin/colleges/page.js",
+  "/super-admin/settings/page": "app/super-admin/settings/page.js",
+  "/super-admin/dashboard/page": "app/super-admin/dashboard/page.js"
+}
