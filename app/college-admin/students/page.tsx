@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api, Student, UpdateUserPayload } from "@/lib/api";
+import { DataTable, ColumnDef, FilterOption } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Edit2, Trash2, UserPlus, User, Mail, Hash, Building, GraduationCap, Calendar } from "lucide-react";
+import { FormField, PasswordField, SubmitButton } from "@/components/shared/forms";
 
 interface StudentForm extends UpdateUserPayload {
   name: string;
@@ -22,19 +25,12 @@ interface StudentForm extends UpdateUserPayload {
   semester: number;
 }
 
-const PAGE_SIZE = 8;
-
 export default function StudentsPage() {
   const queryClient = useQueryClient();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [search, setSearch] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [courseFilter, setCourseFilter] = useState("");
-  const [yearFilter, setYearFilter] = useState("");
-  const [semesterFilter, setSemesterFilter] = useState("");
-  const [page, setPage] = useState(1);
+
   const [form, setForm] = useState<StudentForm>({
     name: "",
     email: "",
@@ -46,44 +42,15 @@ export default function StudentsPage() {
     semester: 1,
   });
 
-  const { data: students, isLoading } = useQuery({
+  const { data: students = [], isLoading } = useQuery({
     queryKey: ["students"],
     queryFn: () => api.get<Student[]>("/api/v1/users/students"),
   });
 
   const departments = useMemo(
-    () => Array.from(new Set(students?.map((student) => student.department).filter(Boolean))),
+    () => Array.from(new Set(students.map((student) => student.department).filter(Boolean))),
     [students]
   );
-
-  const courses = useMemo(
-    () => Array.from(new Set(students?.map((student) => student.course ?? "").filter(Boolean))),
-    [students]
-  );
-
-  const filteredStudents = useMemo(() => {
-    if (!students) return [];
-    const normalizedSearch = search.toLowerCase();
-    return students.filter((student) => {
-      const matchesSearch =
-        student.name.toLowerCase().includes(normalizedSearch) ||
-        student.email.toLowerCase().includes(normalizedSearch) ||
-        student.roll_no.toLowerCase().includes(normalizedSearch) ||
-        student.department.toLowerCase().includes(normalizedSearch) ||
-        (student.course ?? "").toLowerCase().includes(normalizedSearch);
-
-      const matchesDepartment = departmentFilter ? student.department === departmentFilter : true;
-      const matchesCourse = courseFilter ? student.course === courseFilter : true;
-      const matchesYear = yearFilter ? String(student.year) === yearFilter : true;
-      const matchesSemester = semesterFilter ? String(student.semester) === semesterFilter : true;
-
-      return matchesSearch && matchesDepartment && matchesCourse && matchesYear && matchesSemester;
-    });
-  }, [students, search, departmentFilter, courseFilter, yearFilter, semesterFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginatedStudents = filteredStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const createMutation = useMutation({
     mutationFn: (body: StudentForm) =>
@@ -92,7 +59,7 @@ export default function StudentsPage() {
         role: "student",
       }),
     onSuccess: () => {
-      setMessage("Student created successfully.");
+      setMessage("Student registered successfully.");
       setError("");
       setForm({ name: "", email: "", password: "", roll_no: "", department: "", course: "", year: 1, semester: 1 });
       queryClient.invalidateQueries({ queryKey: ["students"] });
@@ -177,251 +144,233 @@ export default function StudentsPage() {
     setForm({ name: "", email: "", password: "", roll_no: "", department: "", course: "", year: 1, semester: 1 });
   };
 
+  // Define Table Columns
+  const columns: ColumnDef<Student>[] = [
+    {
+      header: "Roll Number",
+      accessorKey: "roll_no",
+      sortable: true,
+      cell: (row) => <span className="font-mono font-bold text-foreground">{row.roll_no}</span>,
+    },
+    {
+      header: "Student Name",
+      accessorKey: "name",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-foreground">{row.name}</p>
+          <p className="text-[11px] text-muted-foreground">{row.email}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Department",
+      accessorKey: "department",
+      sortable: true,
+    },
+    {
+      header: "Course",
+      accessorKey: "course",
+      sortable: true,
+      cell: (row) => row.course || "—",
+    },
+    {
+      header: "Year / Sem",
+      accessorKey: "year",
+      sortable: true,
+      cell: (row) => (
+        <span className="font-medium">
+          Yr {row.year} • Sem {row.semester}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      id: "status",
+      cell: () => <StatusBadge status="active" label="Enrolled" />,
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: (row) => (
+        <div className="flex items-center gap-1.5 justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl hover:bg-indigo-500/10 hover:text-indigo-500"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl text-rose-500 hover:bg-rose-500/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // Define Table Filter Options
+  const tableFilters: FilterOption<Student>[] = [
+    {
+      id: "department",
+      label: "Departments",
+      options: departments.map((d) => ({ label: d, value: d })),
+    },
+  ];
+
   return (
     <AuthGuard allowedRoles={["college_admin"]}>
-      <DashboardShell title="Students">
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>{selectedStudent ? "Edit Student" : "Register Student"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
+      <DashboardShell title="Student Management">
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+            {/* Form Card */}
+            <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-lg rounded-3xl h-fit">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <UserPlus className="h-5 w-5 text-indigo-500" />
+                  {selectedStudent ? "Edit Student" : "Register New Student"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <FormField
                     id="name"
+                    label="Student Name"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(val) => setForm({ ...form, name: val })}
                     required
+                    placeholder="e.g. Rahul Sharma"
+                    icon={User}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
+
+                  <FormField
                     id="email"
+                    label="Email Address"
                     type="email"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={(val) => setForm({ ...form, email: val })}
                     required
+                    placeholder="student@college.edu"
+                    icon={Mail}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
+
+                  <PasswordField
                     id="password"
-                    type="password"
+                    label="Password"
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onChange={(val) => setForm({ ...form, password: val })}
                     required={!selectedStudent}
                     placeholder={selectedStudent ? "Leave blank to keep current" : "Minimum 8 characters"}
+                    showStrength={!selectedStudent}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="roll_no">Roll Number</Label>
-                  <Input
+
+                  <FormField
                     id="roll_no"
+                    label="Roll Number"
                     value={form.roll_no}
-                    onChange={(e) => setForm({ ...form, roll_no: e.target.value })}
+                    onChange={(val) => setForm({ ...form, roll_no: val })}
                     required
+                    placeholder="CS-2024-001"
+                    icon={Hash}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
+
+                  <FormField
                     id="department"
+                    label="Department"
                     value={form.department}
-                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    onChange={(val) => setForm({ ...form, department: val })}
                     required
+                    placeholder="Computer Science"
+                    icon={Building}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="course">Course</Label>
-                  <Input
+
+                  <FormField
                     id="course"
+                    label="Course Program"
                     value={form.course}
-                    onChange={(e) => setForm({ ...form, course: e.target.value })}
+                    onChange={(val) => setForm({ ...form, course: val })}
                     required
+                    placeholder="B.Tech CS"
+                    icon={GraduationCap}
                   />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="year">Year</Label>
-                    <Input
+
+                  <div className="grid gap-3 grid-cols-2">
+                    <FormField
                       id="year"
+                      label="Year"
                       type="number"
                       min={1}
                       value={form.year}
-                      onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
+                      onChange={(val) => setForm({ ...form, year: Number(val) })}
                       required
+                      icon={Calendar}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="semester">Semester</Label>
-                    <Input
+
+                    <FormField
                       id="semester"
+                      label="Semester"
                       type="number"
                       min={1}
                       value={form.semester}
-                      onChange={(e) => setForm({ ...form, semester: Number(e.target.value) })}
+                      onChange={(val) => setForm({ ...form, semester: Number(val) })}
                       required
+                      icon={Calendar}
                     />
                   </div>
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                {message && <p className="text-sm text-primary">{message}</p>}
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <Button type="submit" disabled={createMutation.status === "pending" || updateMutation.status === "pending"}>
-                    {selectedStudent ? (updateMutation.status === "pending" ? "Updating..." : "Update Student") : (createMutation.status === "pending" ? "Creating..." : "Create Student")}
-                  </Button>
-                  {selectedStudent && (
-                    <Button variant="outline" type="button" onClick={handleCancel}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Student Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Manage student records that belong to your college.</p>
-              <div className="mt-4 space-y-2 text-sm">
-                <p>Total students: <span className="font-semibold">{students?.length ?? 0}</span></p>
-                <p>{selectedStudent ? "Editing an existing student." : "Create a new student record."}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
+                  {message && <p className="text-xs text-emerald-500 font-semibold">{message}</p>}
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <CardTitle>All Students ({filteredStudents.length})</CardTitle>
-                <p className="text-sm text-muted-foreground">Search, filter, and manage students from your college.</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4">
-                <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
-                  <Input
-                    id="search"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Name, roll, email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="filter-department">Department</Label>
-                  <select
-                    id="filter-department"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-                    value={departmentFilter}
-                    onChange={(e) => {
-                      setDepartmentFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All departments</option>
-                    {departments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="filter-course">Course</Label>
-                  <select
-                    id="filter-course"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-                    value={courseFilter}
-                    onChange={(e) => {
-                      setCourseFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All courses</option>
-                    {courses.map((course) => (
-                      <option key={course} value={course}>
-                        {course}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : filteredStudents.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-3 pr-4">Roll No</th>
-                      <th className="pb-3 pr-4">Name</th>
-                      <th className="pb-3 pr-4">Department</th>
-                      <th className="pb-3 pr-4">Course</th>
-                      <th className="pb-3 pr-4">Year</th>
-                      <th className="pb-3 pr-4">Semester</th>
-                      <th className="pb-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedStudents.map((s) => (
-                      <tr key={s.id} className="border-b">
-                        <td className="py-3 pr-4 font-mono">{s.roll_no}</td>
-                        <td className="py-3 pr-4">{s.name}</td>
-                        <td className="py-3 pr-4">{s.department}</td>
-                        <td className="py-3 pr-4">{s.course ?? "-"}</td>
-                        <td className="py-3 pr-4">{s.year}</td>
-                        <td className="py-3 pr-4">{s.semester}</td>
-                        <td className="py-3 pr-4 text-right">
-                          <div className="flex flex-wrap gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(s)}>
-                              Edit
-                            </Button>
-                            <Button type="button" variant="destructive" size="sm" onClick={() => handleDelete(s)}>
-                              Delete
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="py-8 text-center text-muted-foreground">No students found with the current filters.</p>
-            )}
-          </CardContent>
-          <div className="flex items-center justify-between border-t px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              Showing {Math.min(PAGE_SIZE, filteredStudents.length - (currentPage - 1) * PAGE_SIZE)} of {filteredStudents.length} students
-            </p>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((prev) => Math.max(prev - 1, 1))}>
-                Previous
-              </Button>
-              <Button type="button" variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}>
-                Next
-              </Button>
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    {selectedStudent && (
+                      <Button variant="outline" type="button" onClick={handleCancel} className="rounded-2xl">
+                        Cancel
+                      </Button>
+                    )}
+                    <SubmitButton
+                      type="submit"
+                      isLoading={createMutation.status === "pending" || updateMutation.status === "pending"}
+                      loadingText={selectedStudent ? "Updating..." : "Registering..."}
+                      successText={selectedStudent ? "Updated!" : "Registered!"}
+                    >
+                      {selectedStudent ? "Update Student" : "Register Student"}
+                    </SubmitButton>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Premium Data Table */}
+            <div>
+              <DataTable
+                title={`Enrolled Students (${students.length})`}
+                description="Sticky header table with live search, filters, pagination & CSV export"
+                data={students}
+                columns={columns}
+                filters={tableFilters}
+                searchPlaceholder="Search by name, roll no, department..."
+                searchFields={["name", "roll_no", "email", "department", "course"]}
+                exportFileName="students_directory"
+                isLoading={isLoading}
+                emptyMessage="No student records match your search query."
+              />
             </div>
           </div>
-        </Card>
+        </div>
       </DashboardShell>
     </AuthGuard>
   );

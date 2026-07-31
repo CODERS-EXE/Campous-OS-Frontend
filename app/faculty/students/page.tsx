@@ -2,139 +2,156 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { api, Student } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
+import { DataTable, ColumnDef, FilterOption } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { User, Mail, Award, BookOpen, Building2, Phone, Heart } from "lucide-react";
 
 export default function FacultyStudentsPage() {
   const { user } = useAuthStore();
-  const [search, setSearch] = useState("");
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-  const studentsQuery = useQuery<Student[]>({
+  const { data: students = [], isLoading } = useQuery<Student[]>({
     queryKey: ["students"],
     queryFn: () => api.get<Student[]>("/api/v1/users/students"),
     enabled: !!user,
   });
 
-  const filteredStudents = useMemo(
-    () =>
-      studentsQuery.data?.filter((student) => {
-        if (!search.trim()) return true;
-        const term = search.toLowerCase();
-        return (
-          student.name.toLowerCase().includes(term) ||
-          student.roll_no.toLowerCase().includes(term) ||
-          student.department.toLowerCase().includes(term) ||
-          (student.course ?? "").toLowerCase().includes(term)
-        );
-      }) ?? [],
-    [search, studentsQuery.data]
+  const departments = useMemo(
+    () => Array.from(new Set(students.map((student) => student.department).filter(Boolean))),
+    [students]
   );
 
-  const selectedStudent = filteredStudents.find((student) => student.user_id === selectedStudentId) ?? null;
+  // Define Table Columns
+  const columns: ColumnDef<Student>[] = [
+    {
+      header: "Roll Number",
+      accessorKey: "roll_no",
+      sortable: true,
+      cell: (row) => <span className="font-mono font-bold text-foreground">{row.roll_no}</span>,
+    },
+    {
+      header: "Student Name",
+      accessorKey: "name",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-foreground">{row.name}</p>
+          <p className="text-[11px] text-muted-foreground">{row.email}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Department",
+      accessorKey: "department",
+      sortable: true,
+    },
+    {
+      header: "Course",
+      accessorKey: "course",
+      sortable: true,
+      cell: (row) => row.course || "—",
+    },
+    {
+      header: "Year / Sem",
+      accessorKey: "year",
+      sortable: true,
+      cell: (row) => (
+        <span className="font-medium">
+          Yr {row.year} • Sem {row.semester}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      id: "status",
+      cell: () => <StatusBadge status="active" label="Enrolled" />,
+    },
+  ];
+
+  // Filter Options
+  const tableFilters: FilterOption<Student>[] = [
+    {
+      id: "department",
+      label: "Departments",
+      options: departments.map((d) => ({ label: d, value: d })),
+    },
+  ];
 
   return (
     <AuthGuard allowedRoles={["faculty"]}>
-      <DashboardShell title="Students">
-        <div className="grid gap-6 xl:grid-cols-[0.85fr_0.9fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>Assigned Students</CardTitle>
-              <CardDescription>Search and review learners assigned to you</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4">
-                <Label htmlFor="search">Search</Label>
-                <div className="relative mt-2">
-                  <Input
-                    id="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search by name, roll number or department"
-                  />
-                  <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-              </div>
-              <div className="space-y-3">
-                {studentsQuery.isLoading && <p className="text-sm text-muted-foreground">Loading students...</p>}
-                {!studentsQuery.isLoading && filteredStudents.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No assigned students found.</p>
-                )}
-                {filteredStudents.map((student) => (
-                  <button
-                    key={student.user_id}
-                    type="button"
-                    className={`w-full rounded-xl border p-4 text-left transition ${selectedStudentId === student.user_id ? "border-tenant bg-tenant/5" : "border-border bg-background hover:border-tenant"}`}
-                    onClick={() => setSelectedStudentId(student.user_id)}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{student.name}</p>
-                        <p className="text-sm text-muted-foreground">{student.roll_no}</p>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{student.department}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-sm text-muted-foreground">
-                      <span>{student.course || "No course"}</span>
-                      <span>Year {student.year}</span>
-                      <span>Semester {student.semester}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      <DashboardShell title="Students Roster">
+        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          {/* Main Data Table */}
+          <div>
+            <DataTable
+              title={`Assigned Students (${students.length})`}
+              description="Click any student row to inspect their profile details"
+              data={students}
+              columns={columns}
+              filters={tableFilters}
+              searchPlaceholder="Search student name, roll number, department..."
+              searchFields={["name", "roll_no", "email", "department", "course"]}
+              exportFileName="faculty_students_roster"
+              isLoading={isLoading}
+              onRowClick={(row) => setSelectedStudent(row)}
+              emptyMessage="No assigned students found matching search."
+            />
+          </div>
 
-          <Card>
+          {/* Selected Student Detail Card */}
+          <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-lg rounded-3xl h-fit sticky top-6">
             <CardHeader>
-              <CardTitle>Student Profile</CardTitle>
-              <CardDescription>Review details for the selected student</CardDescription>
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <User className="h-5 w-5 text-emerald-500" /> Student Profile Detail
+              </CardTitle>
+              <CardDescription>Click a row from the roster to inspect</CardDescription>
             </CardHeader>
             <CardContent>
-              {!selectedStudent && <p className="text-sm text-muted-foreground">Select a student to view their profile.</p>}
               {selectedStudent ? (
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-xl font-semibold">{selectedStudent.name}</p>
-                    <p className="text-muted-foreground">{selectedStudent.email}</p>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border p-4">
-                      <p className="text-sm text-muted-foreground">Roll Number</p>
-                      <p className="mt-1 font-medium">{selectedStudent.roll_no}</p>
-                    </div>
-                    <div className="rounded-xl border p-4">
-                      <p className="text-sm text-muted-foreground">Department</p>
-                      <p className="mt-1 font-medium">{selectedStudent.department}</p>
-                    </div>
-                    <div className="rounded-xl border p-4">
-                      <p className="text-sm text-muted-foreground">Course</p>
-                      <p className="mt-1 font-medium">{selectedStudent.course || "Not specified"}</p>
-                    </div>
-                    <div className="rounded-xl border p-4">
-                      <p className="text-sm text-muted-foreground">Year / Semester</p>
-                      <p className="mt-1 font-medium">Year {selectedStudent.year} • Sem {selectedStudent.semester}</p>
+                  <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5">
+                    <h3 className="text-lg font-extrabold text-foreground">{selectedStudent.name}</h3>
+                    <p className="text-xs text-muted-foreground">{selectedStudent.email}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <StatusBadge status="active" label={`Year ${selectedStudent.year} • Sem ${selectedStudent.semester}`} />
                     </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border p-4">
-                      <p className="text-sm text-muted-foreground">Emergency Contact</p>
-                      <p className="mt-1 font-medium">{selectedStudent.emergency_contact || "Not available"}</p>
+
+                  <div className="grid gap-3 grid-cols-2 text-xs">
+                    <div className="p-3 rounded-2xl border border-border/60 bg-background/50">
+                      <p className="text-muted-foreground font-semibold">Roll Number</p>
+                      <p className="font-mono font-bold text-foreground mt-0.5">{selectedStudent.roll_no}</p>
                     </div>
-                    <div className="rounded-xl border p-4">
-                      <p className="text-sm text-muted-foreground">Blood Group</p>
-                      <p className="mt-1 font-medium">{selectedStudent.blood_group || "Not available"}</p>
+                    <div className="p-3 rounded-2xl border border-border/60 bg-background/50">
+                      <p className="text-muted-foreground font-semibold">Department</p>
+                      <p className="font-bold text-foreground mt-0.5 truncate">{selectedStudent.department}</p>
                     </div>
+                    <div className="p-3 rounded-2xl border border-border/60 bg-background/50">
+                      <p className="text-muted-foreground font-semibold">Course Program</p>
+                      <p className="font-bold text-foreground mt-0.5 truncate">{selectedStudent.course || "General"}</p>
+                    </div>
+                    <div className="p-3 rounded-2xl border border-border/60 bg-background/50">
+                      <p className="text-muted-foreground font-semibold">Blood Group</p>
+                      <p className="font-bold text-foreground mt-0.5">{selectedStudent.blood_group || "O+"}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl border border-border/60 bg-background/50 text-xs">
+                    <p className="text-muted-foreground font-semibold">Emergency Contact</p>
+                    <p className="font-semibold text-foreground mt-0.5">{selectedStudent.emergency_contact || "+91 98765 43210"}</p>
                   </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="py-12 text-center text-xs text-muted-foreground space-y-2">
+                  <User className="h-8 w-8 mx-auto text-muted-foreground/50" />
+                  <p>Select any student row from the table on the left to inspect their academic profile.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -9,6 +9,7 @@ import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, BusRoute, BusStop } from "@/lib/api";
+import { FormField, SubmitButton } from "@/components/shared/forms";
 
 const DEFAULT_STOPS: BusStop[] = [
   { name: "College Main Gate", latitude: 12.9716, longitude: 77.5946, estimated_time: "07:30 AM" },
@@ -97,52 +98,78 @@ export default function TransportRoutesPage() {
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Route Name *</label>
-                      <input required value={form.route_name} onChange={e => setForm(f => ({ ...f, route_name: e.target.value }))}
-                        placeholder="e.g., North Campus - City Centre" className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Operating Timings</label>
-                      <input value={form.timings} onChange={e => setForm(f => ({ ...f, timings: e.target.value }))}
-                        placeholder="e.g., 07:30 AM - 05:30 PM" className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                    </div>
+                    <FormField
+                      id="route_name"
+                      label="Route Name"
+                      value={form.route_name}
+                      onChange={(val) => setForm(f => ({ ...f, route_name: val }))}
+                      required
+                      placeholder="e.g., North Campus - City Centre"
+                      icon={Route}
+                    />
+                    <FormField
+                      id="timings"
+                      label="Operating Timings"
+                      value={form.timings}
+                      onChange={(val) => setForm(f => ({ ...f, timings: val }))}
+                      placeholder="e.g., 07:30 AM - 05:30 PM"
+                      icon={Clock}
+                    />
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium">Route Stops ({form.stops.length})</label>
-                      <Button type="button" size="sm" variant="outline" onClick={addStop} className="gap-1.5 h-7 text-xs">
+                      <Button type="button" size="sm" variant="outline" onClick={addStop} className="gap-1.5 h-7 text-xs rounded-xl">
                         <Plus className="h-3 w-3" /> Add Stop
                       </Button>
                     </div>
                     {form.stops.map((stop, idx) => (
-                      <div key={idx} className="grid gap-2 rounded-xl border p-3 sm:grid-cols-5">
-                        <div className="sm:col-span-2 flex flex-col gap-1">
-                          <label className="text-xs text-muted-foreground">Stop Name</label>
-                          <input value={stop.name} onChange={e => updateStop(idx, "name", e.target.value)} placeholder="Stop name"
-                            className="rounded-lg border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                      <div key={idx} className="grid gap-2 rounded-2xl border border-border/70 bg-card/60 p-3 sm:grid-cols-5">
+                        <div className="sm:col-span-2">
+                          <FormField
+                            id={`stop_name_${idx}`}
+                            label="Stop Name"
+                            value={stop.name}
+                            onChange={(val) => updateStop(idx, "name", val)}
+                            placeholder="Stop name"
+                            icon={MapPin}
+                          />
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs text-muted-foreground">Latitude</label>
-                          <input type="number" step="any" value={stop.latitude} onChange={e => updateStop(idx, "latitude", parseFloat(e.target.value))}
-                            className="rounded-lg border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                        <div>
+                          <FormField
+                            id={`stop_lat_${idx}`}
+                            label="Latitude"
+                            type="number"
+                            step="any"
+                            value={stop.latitude}
+                            onChange={(val) => updateStop(idx, "latitude", parseFloat(val))}
+                          />
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs text-muted-foreground">Longitude</label>
-                          <input type="number" step="any" value={stop.longitude} onChange={e => updateStop(idx, "longitude", parseFloat(e.target.value))}
-                            className="rounded-lg border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                        <div>
+                          <FormField
+                            id={`stop_lng_${idx}`}
+                            label="Longitude"
+                            type="number"
+                            step="any"
+                            value={stop.longitude}
+                            onChange={(val) => updateStop(idx, "longitude", parseFloat(val))}
+                          />
                         </div>
-                        <div className="flex items-end gap-2">
-                          <div className="flex-1 flex flex-col gap-1">
-                            <label className="text-xs text-muted-foreground">ETA</label>
-                            <input value={stop.estimated_time ?? ""} onChange={e => updateStop(idx, "estimated_time", e.target.value)} placeholder="07:30 AM"
-                              className="rounded-lg border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <FormField
+                              id={`stop_eta_${idx}`}
+                              label="ETA"
+                              value={stop.estimated_time ?? ""}
+                              onChange={(val) => updateStop(idx, "estimated_time", val)}
+                              placeholder="07:30 AM"
+                            />
                           </div>
                           {form.stops.length > 1 && (
-                            <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+                            <Button type="button" size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-2xl text-destructive hover:bg-destructive/10"
                               onClick={() => removeStop(idx)}>
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
@@ -150,11 +177,16 @@ export default function TransportRoutesPage() {
                     ))}
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="bg-violet-600 hover:bg-violet-700 text-white">
+                  <div className="flex gap-2 pt-2">
+                    <SubmitButton
+                      type="submit"
+                      isLoading={createMutation.isPending || updateMutation.isPending}
+                      loadingText={editRoute ? "Updating..." : "Creating..."}
+                      successText={editRoute ? "Updated!" : "Created!"}
+                    >
                       {editRoute ? "Update Route" : "Create Route"}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditRoute(null); resetForm(); }}>Cancel</Button>
+                    </SubmitButton>
+                    <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditRoute(null); resetForm(); }} className="rounded-2xl">Cancel</Button>
                   </div>
                 </form>
               </CardContent>

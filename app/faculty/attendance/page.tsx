@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PlusCircle, RefreshCcw } from "lucide-react";
+import { PlusCircle, RefreshCcw, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { api, Attendance, Faculty, Student } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { formatDate } from "@/lib/utils";
+import { FormSelect, FormDatePicker, FormField, SubmitButton } from "@/components/shared/forms";
+import { BookOpen, Layers } from "lucide-react";
 
 export default function FacultyAttendancePage() {
   const { user } = useAuthStore();
@@ -89,10 +91,12 @@ export default function FacultyAttendancePage() {
   }, [studentsQuery.data, statusByStudent]);
 
   const studentRows = useMemo(() => {
-    return studentsQuery.data?.map((student) => ({
-      ...student,
-      status: statusByStudent[student.user_id] ?? "absent",
-    })) ?? [];
+    return (
+      studentsQuery.data?.map((student) => ({
+        ...student,
+        status: statusByStudent[student.user_id] ?? "absent",
+      })) ?? []
+    );
   }, [studentsQuery.data, statusByStudent]);
 
   const handleStatusChange = (studentId: string, status: string) => {
@@ -108,7 +112,6 @@ export default function FacultyAttendancePage() {
       setMessage("No assigned students available for attendance.");
       return;
     }
-
     const payload = {
       subject,
       date,
@@ -122,144 +125,197 @@ export default function FacultyAttendancePage() {
   };
 
   const sessions = useMemo(
-    () => attendanceQuery.data?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) ?? [],
+    () =>
+      attendanceQuery.data
+        ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) ?? [],
     [attendanceQuery.data]
   );
 
   const subjectOptions = profileQuery.data?.subjects ?? [];
 
+  const presentCount = Object.values(statusByStudent).filter((s) => s === "present").length;
+  const absentCount = Object.values(statusByStudent).filter((s) => s === "absent").length;
+  const lateCount = Object.values(statusByStudent).filter((s) => s === "late").length;
+
   return (
     <AuthGuard allowedRoles={["faculty"]}>
       <DashboardShell title="Attendance">
         <div className="space-y-6">
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mark Today&apos;s Attendance</CardTitle>
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            {/* Mark Attendance Card */}
+            <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-lg rounded-3xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-bold">Mark Today&apos;s Attendance</CardTitle>
+                <CardDescription>Select subject, date & session, then mark each student</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div>
-                    <Label htmlFor="subject">Subject</Label>
-                    <select
-                      id="subject"
-                      value={subject}
-                      onChange={(event) => setSubject(event.target.value)}
-                      className="mt-2 block w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              <CardContent className="space-y-4">
+                {/* Form Controls */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <FormSelect
+                    id="subject"
+                    label="Subject"
+                    value={subject}
+                    onChange={(val) => setSubject(val)}
+                    placeholder="Select subject"
+                    options={subjectOptions.map((s) => ({ value: s, label: s }))}
+                    icon={BookOpen}
+                  />
+
+                  <FormDatePicker
+                    id="date"
+                    label="Attendance Date"
+                    value={date}
+                    onChange={(val) => setDate(val)}
+                  />
+
+                  <FormField
+                    id="session"
+                    label="Session Name"
+                    value={sessionName}
+                    onChange={(val) => setSessionName(val)}
+                    placeholder="Morning lecture, Lab…"
+                    icon={Layers}
+                  />
+                </div>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Present", count: presentCount, color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/30", icon: CheckCircle2 },
+                    { label: "Absent", count: absentCount, color: "text-rose-600 bg-rose-500/10 border-rose-500/30", icon: XCircle },
+                    { label: "Late", count: lateCount, color: "text-amber-600 bg-amber-500/10 border-amber-500/30", icon: Clock },
+                  ].map(({ label, count, color, icon: Icon }) => (
+                    <div key={label} className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-bold ${color}`}>
+                      <Icon className="h-4 w-4" />
+                      <span>{count} {label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Attendance Table */}
+                <div className="overflow-hidden rounded-2xl border border-border/60">
+                  <div className="overflow-x-auto max-h-[420px]">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-md border-b border-border/60">
+                        <tr className="text-muted-foreground uppercase tracking-wider font-bold">
+                          <th className="px-4 py-3 text-left">Student</th>
+                          <th className="px-4 py-3 text-left">Roll No</th>
+                          <th className="px-4 py-3 text-left">Attendance Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {studentsQuery.isLoading &&
+                          Array.from({ length: 5 }).map((_, i) => (
+                            <tr key={i} className="animate-pulse">
+                              <td className="px-4 py-3"><div className="h-4 w-32 bg-muted/60 rounded-lg" /></td>
+                              <td className="px-4 py-3"><div className="h-4 w-20 bg-muted/60 rounded-lg" /></td>
+                              <td className="px-4 py-3"><div className="h-7 w-48 bg-muted/60 rounded-lg" /></td>
+                            </tr>
+                          ))}
+                        {!studentsQuery.isLoading && studentRows.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No assigned students available.</td>
+                          </tr>
+                        )}
+                        {studentRows.map((student) => {
+                          const status = statusByStudent[student.user_id] ?? "absent";
+                          return (
+                            <tr key={student.id} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-3 font-semibold text-foreground">{student.name}</td>
+                              <td className="px-4 py-3 font-mono text-muted-foreground">{student.roll_no}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-2">
+                                  {[
+                                    { value: "present", label: "Present", active: "bg-emerald-500 text-white", inactive: "border border-border/80 text-muted-foreground hover:border-emerald-500 hover:text-emerald-600" },
+                                    { value: "absent", label: "Absent", active: "bg-rose-500 text-white", inactive: "border border-border/80 text-muted-foreground hover:border-rose-500 hover:text-rose-600" },
+                                    { value: "late", label: "Late", active: "bg-amber-500 text-white", inactive: "border border-border/80 text-muted-foreground hover:border-amber-500 hover:text-amber-600" },
+                                  ].map((opt) => (
+                                    <button
+                                      key={opt.value}
+                                      type="button"
+                                      className={`rounded-full px-3 py-1 text-xs font-bold transition-all ${status === opt.value ? opt.active : opt.inactive}`}
+                                      onClick={() => handleStatusChange(student.user_id, opt.value)}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Save Row */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2">
+                  {message && (
+                    <p className={`text-xs font-semibold ${message.includes("success") ? "text-emerald-500" : "text-rose-500"}`}>
+                      {message}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button variant="outline" size="sm" onClick={() => attendanceQuery.refetch()} className="rounded-2xl">
+                      <RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> Refresh
+                    </Button>
+                    <SubmitButton
+                      onClick={handleSave}
+                      isLoading={attendanceMutation.status === "pending"}
+                      loadingText="Saving..."
+                      successText="Saved!"
+                      size="sm"
                     >
-                      <option value="">Select subject</option>
-                      {subjectOptions.map((subjectOption) => (
-                        <option key={subjectOption} value={subjectOption}>
-                          {subjectOption}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Date</Label>
-                    <Input id="date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-                  </div>
-                  <div className="lg:col-span-2">
-                    <Label htmlFor="session">Session Name</Label>
-                    <Input id="session" value={sessionName} onChange={(event) => setSessionName(event.target.value)} placeholder="Morning lecture, Lab, etc." />
-                  </div>
-                </div>
-                <div className="mt-6 overflow-x-auto">
-                  <table className="min-w-full divide-y divide-border text-left text-sm">
-                    <thead>
-                      <tr>
-                        <th className="px-3 py-2">Student</th>
-                        <th className="px-3 py-2">Roll No</th>
-                        <th className="px-3 py-2">Attendance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {studentsQuery.isLoading && (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-sm text-muted-foreground">
-                            Loading students...
-                          </td>
-                        </tr>
-                      )}
-                      {!studentsQuery.isLoading && studentRows.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-sm text-muted-foreground">
-                            No assigned students available.
-                          </td>
-                        </tr>
-                      )}
-                      {studentRows.map((student) => (
-                        <tr key={student.id}>
-                          <td className="px-3 py-3 font-medium">{student.name}</td>
-                          <td className="px-3 py-3 text-muted-foreground">{student.roll_no}</td>
-                          <td className="px-3 py-3">
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { value: "present", label: "Present" },
-                                { value: "absent", label: "Absent" },
-                                { value: "late", label: "Late" },
-                              ].map((option) => (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${statusByStudent[student.user_id] === option.value ? "bg-tenant text-white" : "border border-input bg-background text-muted-foreground"}`}
-                                  onClick={() => handleStatusChange(student.user_id, option.value)}
-                                >
-                                  {option.label}
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  {message ? <p className="text-sm text-destructive">{message}</p> : null}
-                  <div className="flex items-center gap-2">
-                    <Button variant="tenant" onClick={handleSave} disabled={attendanceMutation.status === "pending"}>
-                        {attendanceMutation.status === "pending" ? "Saving..." : "Save Attendance"}
-                    </Button>
-                    <Button variant="outline" onClick={() => attendanceQuery.refetch()}>
-                      <RefreshCcw className="mr-2 h-4 w-4" /> Refresh
-                    </Button>
+                      Save Attendance
+                    </SubmitButton>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* Attendance History */}
+            <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-lg rounded-3xl">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div>
-                  <CardTitle>Attendance History</CardTitle>
-                  <CardDescription>Recent sessions you created</CardDescription>
+                  <CardTitle className="text-base font-bold">Attendance History</CardTitle>
+                  <CardDescription className="text-xs">Recent sessions you created</CardDescription>
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => setSelectedAttendanceId(null)}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> New Session
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedAttendanceId(null)}
+                  className="rounded-2xl text-xs"
+                >
+                  <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Session
                 </Button>
               </CardHeader>
-              <CardContent>
-                {attendanceQuery.isLoading && <p className="text-sm text-muted-foreground">Loading attendance history...</p>}
-                {!attendanceQuery.isLoading && sessions.length === 0 && <p className="text-sm text-muted-foreground">No attendance records yet.</p>}
-                <div className="space-y-3">
-                  {sessions.map((session) => (
-                    <button
-                      key={session.id}
-                      type="button"
-                      className={`w-full rounded-xl border p-4 text-left transition ${selectedAttendanceId === session.id ? "border-tenant bg-tenant/5" : "border-border bg-background hover:border-tenant"}`}
-                      onClick={() => setSelectedAttendanceId(session.id)}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-medium">{session.subject}</p>
-                          <p className="text-sm text-muted-foreground">{session.session_name || "Session"}</p>
-                        </div>
-                        <span className="text-sm text-muted-foreground">{formatDate(session.created_at)}</span>
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">{session.records.length} students</p>
-                    </button>
+              <CardContent className="space-y-2 max-h-[580px] overflow-y-auto">
+                {attendanceQuery.isLoading &&
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="animate-pulse h-16 rounded-2xl bg-muted/40" />
                   ))}
-                </div>
+                {!attendanceQuery.isLoading && sessions.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-8">No attendance records yet.</p>
+                )}
+                {sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => setSelectedAttendanceId(session.id)}
+                    className={`w-full rounded-2xl border p-3 text-left transition-all text-xs ${
+                      selectedAttendanceId === session.id
+                        ? "border-indigo-500/60 bg-indigo-500/10"
+                        : "border-border/60 bg-background/50 hover:border-indigo-500/40 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-foreground">{session.subject}</p>
+                      <span className="text-muted-foreground shrink-0">{formatDate(session.created_at)}</span>
+                    </div>
+                    <p className="text-muted-foreground mt-0.5">{session.session_name || "Session"} • {session.records.length} students</p>
+                  </button>
+                ))}
               </CardContent>
             </Card>
           </div>

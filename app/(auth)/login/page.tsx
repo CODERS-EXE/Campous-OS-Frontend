@@ -13,6 +13,7 @@ import { api, AuthResponse } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { getRoleDashboardPath } from "@/lib/utils";
 import { CampusLogo } from "@/components/shared/CampusLogo";
+import { FormField, PasswordField, SubmitButton } from "@/components/shared/forms";
 
 // ─── Left panel illustration ──────────────────────────────────────────────────
 
@@ -378,7 +379,7 @@ function LoginForm() {
 
             <form onSubmit={handleLogin} className="space-y-5">
               {/* College Subdomain */}
-              <Field
+              <FormField
                 id="subdomain"
                 label="College Subdomain"
                 value={subdomain}
@@ -390,7 +391,7 @@ function LoginForm() {
               />
 
               {/* Email */}
-              <Field
+              <FormField
                 id="email"
                 label="Email Address"
                 type="email"
@@ -404,28 +405,15 @@ function LoginForm() {
               />
 
               {/* Password */}
-              <Field
+              <PasswordField
                 id="password"
                 label="Password"
-                type={showPwd ? "text" : "password"}
                 value={password}
                 onChange={setPassword}
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
-                icon={Lock}
                 disabled={loading}
-                rightSlot={
-                  <button
-                    type="button"
-                    onClick={() => setShowPwd((v) => !v)}
-                    tabIndex={-1}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPwd ? "Hide password" : "Show password"}
-                  >
-                    {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                }
               />
 
               {/* Remember me + Forgot password row */}
@@ -500,35 +488,17 @@ function LoginForm() {
               </AnimatePresence>
 
               {/* Submit button */}
-              <motion.button
+              <SubmitButton
                 type="submit"
-                disabled={loading || success}
-                whileTap={{ scale: loading ? 1 : 0.98 }}
-                className="relative w-full overflow-hidden rounded-xl bg-gradient-primary py-3.5 text-sm font-semibold text-white shadow-brand transition-all duration-200 hover:shadow-lg hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:scale-100"
+                isLoading={loading}
+                isSuccess={success}
+                loadingText="Signing in…"
+                successText="Redirecting…"
+                fullWidth
+                size="lg"
               >
-                {/* Shimmer */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12"
-                  initial={{ x: "-100%" }}
-                  animate={loading ? {} : { x: ["−100%", "200%"] }}
-                  transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" }}
-                />
-                <span className="relative flex items-center justify-center gap-2">
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Signing in…
-                    </>
-                  ) : success ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Redirecting…
-                    </>
-                  ) : (
-                    "Sign In to CampusOS"
-                  )}
-                </span>
-              </motion.button>
+                Sign In to CampusOS
+              </SubmitButton>
             </form>
 
             {/* Divider */}

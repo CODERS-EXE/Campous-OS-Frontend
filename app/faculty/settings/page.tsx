@@ -4,11 +4,11 @@ import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { SettingsView } from "@/components/settings/SettingsView";
 
-export default function SuperAdminSettingsPage() {
+export default function FacultySettingsPage() {
   return (
-    <AuthGuard allowedRoles={["super_admin"]}>
-      <DashboardShell title="System Settings">
-        <SettingsView allowedRoles={["super_admin"]} roleTitle="Super Admin Settings" />
+    <AuthGuard allowedRoles={["faculty"]}>
+      <DashboardShell title="Faculty Settings">
+        <SettingsView allowedRoles={["faculty"]} roleTitle="Faculty Settings" />
       </DashboardShell>
     </AuthGuard>
   );

@@ -1,23 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, Phone, Search, User, Users } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { api, HostelStudent } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
+import { DataTable, ColumnDef, FilterOption } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Phone, Heart, Building2 } from "lucide-react";
 
 export default function WardenStudentsPage() {
   const { user } = useAuthStore();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedHostel, setSelectedHostel] = useState<string>("");
 
-  const studentsQuery = useQuery<HostelStudent[]>({
+  const { data: students = [], isLoading } = useQuery<HostelStudent[]>({
     queryKey: ["hostel-students", "all"],
     queryFn: () => api.get<HostelStudent[]>("/api/v1/hostel/students"),
     enabled: !!user,
@@ -25,154 +22,106 @@ export default function WardenStudentsPage() {
 
   const hostels = useMemo(() => {
     const hostelSet = new Set<string>();
-    studentsQuery.data?.forEach((s) => s.hostel && hostelSet.add(s.hostel));
+    students.forEach((s) => s.hostel && hostelSet.add(s.hostel));
     return Array.from(hostelSet).sort();
-  }, [studentsQuery.data]);
+  }, [students]);
 
-  const filteredStudents = useMemo(() => {
-    let result = studentsQuery.data || [];
+  const columns: ColumnDef<HostelStudent>[] = [
+    {
+      header: "Student",
+      accessorKey: "name",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-foreground">{row.name}</p>
+          <p className="text-[11px] text-muted-foreground">{row.email}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Roll Number",
+      accessorKey: "roll_no",
+      sortable: true,
+      cell: (row) => <span className="font-mono font-bold">{row.roll_no}</span>,
+    },
+    {
+      header: "Department",
+      accessorKey: "department",
+      sortable: true,
+    },
+    {
+      header: "Year / Sem",
+      accessorKey: "year",
+      sortable: true,
+      cell: (row) => `Yr ${row.year} • Sem ${row.semester}`,
+    },
+    {
+      header: "Hostel",
+      accessorKey: "hostel",
+      sortable: true,
+      cell: (row) => (
+        <span className="inline-flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
+          <Building2 className="h-3.5 w-3.5" />
+          {row.hostel || "Unassigned"}
+        </span>
+      ),
+    },
+    {
+      header: "Contact",
+      id: "contact",
+      cell: (row) => (
+        <div className="space-y-0.5">
+          {row.phone && (
+            <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Phone className="h-3 w-3" /> {row.phone}
+            </p>
+          )}
+          {row.emergency_contact && (
+            <p className="flex items-center gap-1 text-[11px] text-rose-500">
+              <Heart className="h-3 w-3" /> {row.emergency_contact}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Blood Group",
+      accessorKey: "blood_group",
+      cell: (row) => row.blood_group ? (
+        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{row.blood_group}</span>
+      ) : <span className="text-muted-foreground">—</span>,
+    },
+    {
+      header: "Status",
+      id: "status",
+      cell: () => <StatusBadge status="active" label="Resident" />,
+    },
+  ];
 
-    if (selectedHostel) {
-      result = result.filter((s) => s.hostel === selectedHostel);
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (s) =>
-          s.name.toLowerCase().includes(query) ||
-          s.roll_no.toLowerCase().includes(query) ||
-          s.email.toLowerCase().includes(query) ||
-          s.department.toLowerCase().includes(query)
-      );
-    }
-
-    return result;
-  }, [studentsQuery.data, selectedHostel, searchQuery]);
+  const tableFilters: FilterOption<HostelStudent>[] = [
+    {
+      id: "hostel",
+      label: "Hostels",
+      options: hostels.map((h) => ({ label: h, value: h })),
+      filterFn: (row, val) => row.hostel === val,
+    },
+  ];
 
   return (
     <AuthGuard allowedRoles={["warden"]}>
       <DashboardShell title="Hostel Students">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Search & Filter</CardTitle>
-              <CardDescription>Find students by name, roll number, or hostel</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="search">Search</Label>
-                  <div className="relative mt-2">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search by name, roll no, email..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="hostel">Filter by Hostel</Label>
-                  <select
-                    id="hostel"
-                    value={selectedHostel}
-                    onChange={(e) => setSelectedHostel(e.target.value)}
-                    className="mt-2 block w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="">All Hostels</option>
-                    {hostels.map((hostel) => (
-                      <option key={hostel} value={hostel}>
-                        {hostel}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" /> Students List
-              </CardTitle>
-              <CardDescription>
-                Showing {filteredStudents.length} of {studentsQuery.data?.length || 0} students
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {studentsQuery.isLoading && (
-                <p className="text-sm text-muted-foreground">Loading students...</p>
-              )}
-              {!studentsQuery.isLoading && filteredStudents.length === 0 && (
-                <div className="py-8 text-center">
-                  <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    {searchQuery || selectedHostel
-                      ? "No students found matching your search."
-                      : "No hostel students found."}
-                  </p>
-                </div>
-              )}
-              <div className="space-y-3">
-                {filteredStudents.map((student) => (
-                  <Card key={student.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-tenant/10">
-                            <User className="h-6 w-6 text-tenant" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">{student.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Roll: {student.roll_no} • {student.department}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Year {student.year} • Semester {student.semester}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="inline-block rounded-full bg-tenant/10 px-3 py-1 text-sm font-medium text-tenant">
-                            {student.hostel}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-4 grid gap-3 border-t pt-4 md:grid-cols-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate">{student.email}</span>
-                        </div>
-                        {student.phone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
-                            <span>{student.phone}</span>
-                          </div>
-                        )}
-                        {student.emergency_contact && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-red-600" />
-                            <span>Emergency: {student.emergency_contact}</span>
-                          </div>
-                        )}
-                        {student.blood_group && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span>Blood: {student.blood_group}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <DataTable
+          title={`Hostel Residents (${students.length})`}
+          description="Search by name, roll no, department, or filter by hostel block"
+          data={students}
+          columns={columns}
+          filters={tableFilters}
+          searchPlaceholder="Search by name, roll no, email, department..."
+          searchFields={["name", "roll_no", "email", "department", "hostel"]}
+          exportFileName="hostel_students"
+          isLoading={isLoading}
+          emptyMessage="No hostel students found matching your search."
+        />
       </DashboardShell>
     </AuthGuard>
   );

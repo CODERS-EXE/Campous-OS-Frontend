@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, HostelRequestItem, MyRoomResponse } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
+import { FormSelect, FormTextarea, SubmitButton } from "@/components/shared/forms";
+import { FileText } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   pending: "text-amber-600 bg-amber-100 dark:bg-amber-950 dark:text-amber-300",
@@ -175,36 +177,43 @@ export default function StudentHostelPage() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmitRequest} className="space-y-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Preferred Hostel Block / Type *</label>
-                      <select
-                        value={preferredHostel}
-                        onChange={(e) => setPreferredHostel(e.target.value)}
-                        className="rounded-xl border bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
-                      >
-                        <option value="Boys Block A">Boys Block A (North Campus)</option>
-                        <option value="Boys Block B">Boys Block B (South Campus)</option>
-                        <option value="Girls Block A">Girls Block A (Main Campus)</option>
-                        <option value="Girls Block B">Girls Block B (Executive)</option>
-                        <option value="Single Room">Single Room Preference</option>
-                      </select>
-                    </div>
+                    <FormSelect
+                      id="pref_hostel"
+                      label="Preferred Hostel Block / Type"
+                      value={preferredHostel}
+                      onChange={(val) => setPreferredHostel(val)}
+                      required
+                      options={[
+                        { value: "Boys Block A", label: "Boys Block A (North Campus)" },
+                        { value: "Boys Block B", label: "Boys Block B (South Campus)" },
+                        { value: "Girls Block A", label: "Girls Block A (Main Campus)" },
+                        { value: "Girls Block B", label: "Girls Block B (Executive)" },
+                        { value: "Single Room", label: "Single Room Preference" },
+                      ]}
+                      icon={Building2}
+                    />
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Reason for Request *</label>
-                      <textarea
-                        required
-                        rows={3}
-                        value={requestReason}
-                        onChange={(e) => setRequestReason(e.target.value)}
-                        placeholder="e.g. Outstation student requiring full-term semester accommodation..."
-                        className="rounded-xl border bg-background px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
-                      />
-                    </div>
+                    <FormTextarea
+                      id="req_reason"
+                      label="Reason for Request"
+                      value={requestReason}
+                      onChange={(val) => setRequestReason(val)}
+                      required
+                      rows={3}
+                      placeholder="e.g. Outstation student requiring full-term semester accommodation..."
+                      icon={FileText}
+                    />
 
-                    <Button type="submit" disabled={requestMutation.isPending} className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl gap-2 w-full">
+                    <SubmitButton
+                      type="submit"
+                      variant="warning"
+                      isLoading={requestMutation.isPending}
+                      loadingText="Submitting..."
+                      successText="Submitted!"
+                      fullWidth
+                    >
                       <Send className="h-4 w-4" /> Submit Accommodation Request
-                    </Button>
+                    </SubmitButton>
                   </form>
                 </CardContent>
               </Card>

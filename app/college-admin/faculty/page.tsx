@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api, Faculty, UpdateUserPayload } from "@/lib/api";
+import { DataTable, ColumnDef, FilterOption } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Edit2, Trash2, UserPlus, BookOpen, User, Mail, Building, Briefcase, CheckCircle } from "lucide-react";
+import { FormField, FormSelect, PasswordField, SubmitButton } from "@/components/shared/forms";
 
 interface FacultyForm extends Omit<UpdateUserPayload, "subjects"> {
   name: string;
@@ -21,17 +24,12 @@ interface FacultyForm extends Omit<UpdateUserPayload, "subjects"> {
   subjects: string;
 }
 
-const PAGE_SIZE = 8;
-
 export default function FacultyPage() {
   const queryClient = useQueryClient();
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [search, setSearch] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [page, setPage] = useState(1);
+
   const [form, setForm] = useState<FacultyForm>({
     name: "",
     email: "",
@@ -42,36 +40,15 @@ export default function FacultyPage() {
     subjects: "",
   });
 
-  const { data: faculty, isLoading } = useQuery({
+  const { data: faculty = [], isLoading } = useQuery({
     queryKey: ["faculty"],
     queryFn: () => api.get<Faculty[]>("/api/v1/users/faculty"),
   });
 
   const departments = useMemo(
-    () => Array.from(new Set(faculty?.map((member) => member.department).filter(Boolean))),
+    () => Array.from(new Set(faculty.map((member) => member.department).filter(Boolean))),
     [faculty]
   );
-
-  const filteredFaculty = useMemo(() => {
-    if (!faculty) return [];
-    const normalizedSearch = search.toLowerCase();
-    return faculty.filter((member) => {
-      const matchesSearch =
-        member.name.toLowerCase().includes(normalizedSearch) ||
-        member.email.toLowerCase().includes(normalizedSearch) ||
-        member.department.toLowerCase().includes(normalizedSearch) ||
-        (member.designation ?? "").toLowerCase().includes(normalizedSearch) ||
-        member.subjects.join(", ").toLowerCase().includes(normalizedSearch);
-
-      const matchesDepartment = departmentFilter ? member.department === departmentFilter : true;
-      const matchesStatus = statusFilter ? member.status === statusFilter : true;
-      return matchesSearch && matchesDepartment && matchesStatus;
-    });
-  }, [faculty, search, departmentFilter, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredFaculty.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginatedFaculty = filteredFaculty.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const createMutation = useMutation({
     mutationFn: (body: FacultyForm) =>
@@ -111,7 +88,7 @@ export default function FacultyPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete<{ ok: boolean }>(`/api/v1/users/${id}`),
     onSuccess: () => {
-      setMessage("Faculty removed successfully.");
+      setMessage("Faculty member removed successfully.");
       setError("");
       queryClient.invalidateQueries({ queryKey: ["faculty"] });
     },
@@ -170,236 +147,223 @@ export default function FacultyPage() {
     setForm({ name: "", email: "", password: "", department: "", designation: "", status: "active", subjects: "" });
   };
 
+  // Define Table Columns
+  const columns: ColumnDef<Faculty>[] = [
+    {
+      header: "Faculty Name",
+      accessorKey: "name",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-foreground">{row.name}</p>
+          <p className="text-[11px] text-muted-foreground">{row.email}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Department",
+      accessorKey: "department",
+      sortable: true,
+    },
+    {
+      header: "Designation",
+      accessorKey: "designation",
+      sortable: true,
+      cell: (row) => row.designation || "Professor",
+    },
+    {
+      header: "Assigned Subjects",
+      id: "subjects",
+      cell: (row) => (
+        <span className="text-xs font-semibold text-muted-foreground">
+          {row.subjects?.length > 0 ? row.subjects.join(", ") : "—"}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+      sortable: true,
+      cell: (row) => <StatusBadge status={row.status || "active"} />,
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: (row) => (
+        <div className="flex items-center gap-1.5 justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl hover:bg-emerald-500/10 hover:text-emerald-500"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl text-rose-500 hover:bg-rose-500/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // Define Table Filter Options
+  const tableFilters: FilterOption<Faculty>[] = [
+    {
+      id: "department",
+      label: "Departments",
+      options: departments.map((d) => ({ label: d, value: d })),
+    },
+    {
+      id: "status",
+      label: "Status",
+      options: [
+        { label: "Active", value: "active" },
+        { label: "Inactive", value: "inactive" },
+      ],
+    },
+  ];
+
   return (
     <AuthGuard allowedRoles={["college_admin"]}>
-      <DashboardShell title="Faculty">
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>{selectedFaculty ? "Edit Faculty" : "Add Faculty"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
+      <DashboardShell title="Faculty Management">
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+            {/* Form Card */}
+            <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-lg rounded-3xl h-fit">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <UserPlus className="h-5 w-5 text-emerald-500" />
+                  {selectedFaculty ? "Edit Faculty Member" : "Add Faculty Member"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <FormField
                     id="name"
+                    label="Faculty Name"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(val) => setForm({ ...form, name: val })}
                     required
+                    placeholder="e.g. Dr. Ananya Sen"
+                    icon={User}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
+
+                  <FormField
                     id="email"
+                    label="Email Address"
                     type="email"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={(val) => setForm({ ...form, email: val })}
                     required
+                    placeholder="faculty@college.edu"
+                    icon={Mail}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
+
+                  <PasswordField
                     id="password"
-                    type="password"
+                    label="Password"
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onChange={(val) => setForm({ ...form, password: val })}
                     required={!selectedFaculty}
                     placeholder={selectedFaculty ? "Leave blank to keep current" : "Minimum 8 characters"}
+                    showStrength={!selectedFaculty}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
+
+                  <FormField
                     id="department"
+                    label="Department"
                     value={form.department}
-                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    onChange={(val) => setForm({ ...form, department: val })}
                     required
+                    placeholder="Computer Science"
+                    icon={Building}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="designation">Designation</Label>
-                  <Input
+
+                  <FormField
                     id="designation"
+                    label="Designation"
                     value={form.designation}
-                    onChange={(e) => setForm({ ...form, designation: e.target.value })}
+                    onChange={(val) => setForm({ ...form, designation: val })}
                     required
+                    placeholder="Associate Professor"
+                    icon={Briefcase}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <select
+
+                  <FormSelect
                     id="status"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+                    label="Status"
                     value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="subjects">Subjects</Label>
-                  <Input
+                    onChange={(val) => setForm({ ...form, status: val })}
+                    options={[
+                      { value: "active", label: "Active" },
+                      { value: "inactive", label: "Inactive" },
+                    ]}
+                    icon={CheckCircle}
+                  />
+
+                  <FormField
                     id="subjects"
+                    label="Assigned Subjects"
                     value={form.subjects}
-                    onChange={(e) => setForm({ ...form, subjects: e.target.value })}
-                    placeholder="Comma-separated subjects"
+                    onChange={(val) => setForm({ ...form, subjects: val })}
+                    placeholder="Data Structures, Algorithms"
+                    icon={BookOpen}
                   />
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                {message && <p className="text-sm text-primary">{message}</p>}
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <Button type="submit" disabled={createMutation.status === "pending" || updateMutation.status === "pending"}>
-                    {selectedFaculty ? (updateMutation.status === "pending" ? "Updating..." : "Update Faculty") : (createMutation.status === "pending" ? "Creating..." : "Add Faculty")}
-                  </Button>
-                  {selectedFaculty && (
-                    <Button variant="outline" type="button" onClick={handleCancel}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Faculty Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Create and manage faculty users for your college.</p>
-              <div className="mt-4 space-y-2 text-sm">
-                <p>Total faculty: <span className="font-semibold">{faculty?.length ?? 0}</span></p>
-                <p>{selectedFaculty ? "Updating an existing record." : "Fill the form to create a new faculty user."}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
+                  {message && <p className="text-xs text-emerald-500 font-semibold">{message}</p>}
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <CardTitle>All Faculty ({filteredFaculty.length})</CardTitle>
-                <p className="text-sm text-muted-foreground">Filter and manage faculty assigned to your college.</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4">
-                <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
-                  <Input
-                    id="search"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Name, department, subject"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="filter-department">Department</Label>
-                  <select
-                    id="filter-department"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-                    value={departmentFilter}
-                    onChange={(e) => {
-                      setDepartmentFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All departments</option>
-                    {departments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="filter-status">Status</Label>
-                  <select
-                    id="filter-status"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-                    value={statusFilter}
-                    onChange={(e) => {
-                      setStatusFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : filteredFaculty.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-3 pr-4">Name</th>
-                      <th className="pb-3 pr-4">Email</th>
-                      <th className="pb-3 pr-4">Department</th>
-                      <th className="pb-3 pr-4">Designation</th>
-                      <th className="pb-3 pr-4">Status</th>
-                      <th className="pb-3 pr-4">Subjects</th>
-                      <th className="pb-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedFaculty.map((member) => (
-                      <tr key={member.id} className="border-b">
-                        <td className="py-3 pr-4">{member.name}</td>
-                        <td className="py-3 pr-4">{member.email}</td>
-                        <td className="py-3 pr-4">{member.department}</td>
-                        <td className="py-3 pr-4">{member.designation ?? "-"}</td>
-                        <td className="py-3 pr-4 capitalize">{member.status ?? "active"}</td>
-                        <td className="py-3 pr-4">{member.subjects.join(", ")}</td>
-                        <td className="py-3 pr-4 text-right">
-                          <div className="flex flex-wrap gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(member)}>
-                              Edit
-                            </Button>
-                            <Button type="button" variant="destructive" size="sm" onClick={() => handleDelete(member)}>
-                              Delete
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="py-8 text-center text-muted-foreground">No faculty records found with the current filters.</p>
-            )}
-          </CardContent>
-          <div className="flex items-center justify-between border-t px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              Showing {Math.min(PAGE_SIZE, filteredFaculty.length - (currentPage - 1) * PAGE_SIZE)} of {filteredFaculty.length} faculty
-            </p>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((prev) => Math.max(prev - 1, 1))}>
-                Previous
-              </Button>
-              <Button type="button" variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}>
-                Next
-              </Button>
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    {selectedFaculty && (
+                      <Button variant="outline" type="button" onClick={handleCancel} className="rounded-2xl">
+                        Cancel
+                      </Button>
+                    )}
+                    <SubmitButton
+                      type="submit"
+                      variant="success"
+                      isLoading={createMutation.status === "pending" || updateMutation.status === "pending"}
+                      loadingText={selectedFaculty ? "Updating..." : "Creating..."}
+                      successText={selectedFaculty ? "Updated!" : "Added!"}
+                    >
+                      {selectedFaculty ? "Update Faculty" : "Add Faculty"}
+                    </SubmitButton>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Premium Data Table */}
+            <div>
+              <DataTable
+                title={`Academic Faculty (${faculty.length})`}
+                description="Sticky header table with live search, filters, pagination & CSV export"
+                data={faculty}
+                columns={columns}
+                filters={tableFilters}
+                searchPlaceholder="Search faculty by name, department, subjects..."
+                searchFields={["name", "email", "department", "designation", "subjects"]}
+                exportFileName="faculty_directory"
+                isLoading={isLoading}
+                emptyMessage="No faculty records match your search query."
+              />
             </div>
           </div>
-        </Card>
+        </div>
       </DashboardShell>
     </AuthGuard>
   );

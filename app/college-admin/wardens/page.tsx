@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api, UpdateUserPayload, User } from "@/lib/api";
+import { DataTable, ColumnDef, FilterOption } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Edit2, Trash2, UserPlus, ShieldCheck, User as UserIcon, Mail, Building, CheckCircle } from "lucide-react";
+import { FormField, FormSelect, PasswordField, SubmitButton } from "@/components/shared/forms";
 
 interface WardenForm extends UpdateUserPayload {
   name: string;
@@ -19,17 +22,12 @@ interface WardenForm extends UpdateUserPayload {
   status: string;
 }
 
-const PAGE_SIZE = 8;
-
 export default function WardensPage() {
   const queryClient = useQueryClient();
   const [selectedWarden, setSelectedWarden] = useState<User | null>(null);
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [search, setSearch] = useState("");
-  const [hostelFilter, setHostelFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [page, setPage] = useState(1);
+
   const [form, setForm] = useState<WardenForm>({
     name: "",
     email: "",
@@ -38,38 +36,15 @@ export default function WardensPage() {
     status: "active",
   });
 
-  const { data: wardens, isLoading } = useQuery({
+  const { data: wardens = [], isLoading } = useQuery({
     queryKey: ["wardens"],
     queryFn: () => api.get<User[]>("/api/v1/users/wardens"),
   });
 
   const hostels = useMemo(
-    () => Array.from(new Set(wardens?.map((warden) => String(warden.profile?.hostel ?? "")).filter(Boolean))),
+    () => Array.from(new Set(wardens.map((warden) => String(warden.profile?.hostel ?? "")).filter(Boolean))),
     [wardens]
   );
-
-  const filteredWardens = useMemo(() => {
-    if (!wardens) return [];
-    const normalizedSearch = search.toLowerCase();
-    const normalizedHostelFilter = hostelFilter.toLowerCase();
-    const normalizedStatusFilter = statusFilter.toLowerCase();
-    return wardens.filter((warden) => {
-      const profileHostel = String(warden.profile?.hostel ?? "").toLowerCase();
-      const profileStatus = String(warden.profile?.status ?? "").toLowerCase();
-      const matchesSearch =
-        warden.name.toLowerCase().includes(normalizedSearch) ||
-        warden.email.toLowerCase().includes(normalizedSearch) ||
-        profileHostel.includes(normalizedSearch) ||
-        profileStatus.includes(normalizedSearch);
-      const matchesHostel = hostelFilter ? profileHostel === normalizedHostelFilter : true;
-      const matchesStatus = statusFilter ? profileStatus === normalizedStatusFilter : true;
-      return matchesSearch && matchesHostel && matchesStatus;
-    });
-  }, [wardens, search, hostelFilter, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredWardens.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginatedWardens = filteredWardens.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const createMutation = useMutation({
     mutationFn: (body: WardenForm) =>
@@ -78,7 +53,7 @@ export default function WardensPage() {
         role: "warden",
       }),
     onSuccess: () => {
-      setMessage("Warden user created successfully.");
+      setMessage("Warden registered successfully.");
       setError("");
       setSelectedWarden(null);
       setForm({ name: "", email: "", password: "", hostel: "", status: "active" });
@@ -91,7 +66,7 @@ export default function WardensPage() {
     mutationFn: (body: { id: string; payload: UpdateUserPayload }) =>
       api.patch<User>(`/api/v1/users/${body.id}`, body.payload),
     onSuccess: () => {
-      setMessage("Warden user updated successfully.");
+      setMessage("Warden updated successfully.");
       setError("");
       setSelectedWarden(null);
       setForm({ name: "", email: "", password: "", hostel: "", status: "active" });
@@ -103,7 +78,7 @@ export default function WardensPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete<{ ok: boolean }>(`/api/v1/users/${id}`),
     onSuccess: () => {
-      setMessage("Warden user deleted successfully.");
+      setMessage("Warden removed successfully.");
       setError("");
       queryClient.invalidateQueries({ queryKey: ["wardens"] });
     },
@@ -158,201 +133,183 @@ export default function WardensPage() {
     setForm({ name: "", email: "", password: "", hostel: "", status: "active" });
   };
 
+  // Define Table Columns
+  const columns: ColumnDef<User>[] = [
+    {
+      header: "Warden Name",
+      accessorKey: "name",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-foreground">{row.name}</p>
+          <p className="text-[11px] text-muted-foreground">{row.email}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Assigned Hostel",
+      id: "hostel",
+      sortable: true,
+      cell: (row) => <span className="font-semibold">{String(row.profile?.hostel ?? "Unassigned")}</span>,
+    },
+    {
+      header: "Status",
+      id: "status",
+      sortable: true,
+      cell: (row) => <StatusBadge status={String(row.profile?.status ?? "active")} />,
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: (row) => (
+        <div className="flex items-center gap-1.5 justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl hover:bg-amber-500/10 hover:text-amber-500"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl text-rose-500 hover:bg-rose-500/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // Define Table Filter Options
+  const tableFilters: FilterOption<User>[] = [
+    {
+      id: "hostel",
+      label: "Hostels",
+      options: hostels.map((h) => ({ label: h, value: h })),
+      filterFn: (row, val) => String(row.profile?.hostel ?? "") === val,
+    },
+  ];
+
   return (
     <AuthGuard allowedRoles={["college_admin"]}>
-      <DashboardShell title="Wardens">
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>{selectedWarden ? "Edit Warden" : "Add Warden"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
+      <DashboardShell title="Hostel Wardens">
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+            {/* Form Card */}
+            <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-lg rounded-3xl h-fit">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-amber-500" />
+                  {selectedWarden ? "Edit Warden" : "Add New Warden"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <FormField
                     id="name"
+                    label="Warden Name"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(val) => setForm({ ...form, name: val })}
                     required
+                    placeholder="e.g. Suresh Kumar"
+                    icon={UserIcon}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
+
+                  <FormField
                     id="email"
+                    label="Email Address"
                     type="email"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={(val) => setForm({ ...form, email: val })}
                     required
+                    placeholder="warden@college.edu"
+                    icon={Mail}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
+
+                  <PasswordField
                     id="password"
-                    type="password"
+                    label="Password"
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onChange={(val) => setForm({ ...form, password: val })}
                     required={!selectedWarden}
                     placeholder={selectedWarden ? "Leave blank to keep current" : "Minimum 8 characters"}
+                    showStrength={!selectedWarden}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hostel">Hostel</Label>
-                  <Input
+
+                  <FormField
                     id="hostel"
+                    label="Assigned Hostel Block"
                     value={form.hostel}
-                    onChange={(e) => setForm({ ...form, hostel: e.target.value })}
+                    onChange={(val) => setForm({ ...form, hostel: val })}
                     required
+                    placeholder="Boys Hostel Block A"
+                    icon={Building}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <select
+
+                  <FormSelect
                     id="status"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+                    label="Status"
                     value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                {message && <p className="text-sm text-primary">{message}</p>}
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <Button type="submit" disabled={createMutation.status === "pending" || updateMutation.status === "pending"}>
-                    {selectedWarden ? (updateMutation.status === "pending" ? "Updating..." : "Update Warden") : (createMutation.status === "pending" ? "Creating..." : "Add Warden")}
-                  </Button>
-                  {selectedWarden && (
-                    <Button variant="outline" type="button" onClick={handleCancel}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Warden Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Manage warden users for your college.</p>
-              <div className="mt-4 space-y-2 text-sm">
-                <p>Total wardens: <span className="font-semibold">{wardens?.length ?? 0}</span></p>
-                <p>{selectedWarden ? "Editing an existing warden." : "Create a new warden profile."}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <CardTitle>All Wardens ({filteredWardens.length})</CardTitle>
-                <p className="text-sm text-muted-foreground">Search, filter, and manage hostel wardens.</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4">
-                <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
-                  <Input
-                    id="search"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Name, email, hostel"
+                    onChange={(val) => setForm({ ...form, status: val })}
+                    options={[
+                      { value: "active", label: "Active Duty" },
+                      { value: "inactive", label: "Inactive" },
+                    ]}
+                    icon={CheckCircle}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="filter-hostel">Hostel</Label>
-                  <select
-                    id="filter-hostel"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-                    value={hostelFilter}
-                    onChange={(e) => {
-                      setHostelFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All hostels</option>
-                    {hostels.map((hostel) => (
-                      <option key={hostel} value={hostel}>
-                        {hostel}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="filter-status">Status</Label>
-                  <select
-                    id="filter-status"
-                    className="w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-                    value={statusFilter}
-                    onChange={(e) => {
-                      setStatusFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : filteredWardens.length > 0 ? (
-              <div className="space-y-3">
-                {paginatedWardens.map((warden) => (
-                  <div key={warden.id} className="flex flex-col gap-3 rounded-xl border p-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="font-medium">{warden.name}</p>
-                      <p className="text-sm text-muted-foreground">{warden.email}</p>
-                      <p className="text-sm text-muted-foreground">Hostel: {String(warden.profile?.hostel ?? "-")}</p>
-                      <p className="text-sm text-muted-foreground">Status: {String(warden.profile?.status ?? "active")}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(warden)}>
-                        Edit
+
+                  {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
+                  {message && <p className="text-xs text-emerald-500 font-semibold">{message}</p>}
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    {selectedWarden && (
+                      <Button variant="outline" type="button" onClick={handleCancel} className="rounded-2xl">
+                        Cancel
                       </Button>
-                      <Button type="button" variant="destructive" size="sm" onClick={() => handleDelete(warden)}>
-                        Delete
-                      </Button>
-                    </div>
+                    )}
+                    <SubmitButton
+                      type="submit"
+                      variant="warning"
+                      isLoading={createMutation.status === "pending" || updateMutation.status === "pending"}
+                      loadingText={selectedWarden ? "Updating..." : "Creating..."}
+                      successText={selectedWarden ? "Updated!" : "Added!"}
+                    >
+                      {selectedWarden ? "Update Warden" : "Add Warden"}
+                    </SubmitButton>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="py-8 text-center text-muted-foreground">No warden users registered yet.</p>
-            )}
-          </CardContent>
-          <div className="flex items-center justify-between border-t px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              Showing {Math.min(PAGE_SIZE, filteredWardens.length - (currentPage - 1) * PAGE_SIZE)} of {filteredWardens.length} wardens
-            </p>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((prev) => Math.max(prev - 1, 1))}>
-                Previous
-              </Button>
-              <Button type="button" variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}>
-                Next
-              </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Premium Data Table */}
+            <div>
+              <DataTable
+                title={`Hostel Wardens (${wardens.length})`}
+                description="Sticky header table with live search, filters, pagination & CSV export"
+                data={wardens}
+                columns={columns}
+                filters={tableFilters}
+                searchPlaceholder="Search wardens by name, email, hostel..."
+                searchFields={["name", "email"]}
+                exportFileName="wardens_directory"
+                isLoading={isLoading}
+                emptyMessage="No warden users match your search query."
+              />
             </div>
           </div>
-        </Card>
+        </div>
       </DashboardShell>
     </AuthGuard>
   );

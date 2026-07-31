@@ -2,20 +2,16 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bus, Edit2, MapPin, Phone, Plus, Trash2, User, Wifi } from "lucide-react";
+import { Bus, Edit2, MapPin, Phone, Plus, Trash2, User, Wifi, Navigation, Gauge } from "lucide-react";
+import { FormField, FormSelect, SubmitButton } from "@/components/shared/forms";
 import toast from "react-hot-toast";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, BusVehicle, BusRoute } from "@/lib/api";
-
-const statusColors: Record<string, string> = {
-  active: "text-emerald-600 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300",
-  in_transit: "text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-300",
-  maintenance: "text-orange-600 bg-orange-100 dark:bg-orange-950 dark:text-orange-300",
-  inactive: "text-gray-500 bg-gray-100 dark:bg-gray-800 dark:text-gray-400",
-};
+import { DataTable, ColumnDef } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 
 export default function TransportBusesPage() {
   const qc = useQueryClient();
@@ -25,8 +21,14 @@ export default function TransportBusesPage() {
   const [form, setForm] = useState({ bus_number: "", driver_name: "", driver_phone: "", capacity: "40", route_id: "", status: "active" });
   const [locForm, setLocForm] = useState({ latitude: "12.9716", longitude: "77.5946", speed: "35", status: "moving" });
 
-  const busesQuery = useQuery<BusVehicle[]>({ queryKey: ["transport", "buses"], queryFn: () => api.getBuses() });
-  const routesQuery = useQuery<BusRoute[]>({ queryKey: ["transport", "routes"], queryFn: () => api.getRoutes() });
+  const { data: buses = [], isLoading } = useQuery<BusVehicle[]>({
+    queryKey: ["transport", "buses"],
+    queryFn: () => api.getBuses(),
+  });
+  const { data: routes = [] } = useQuery<BusRoute[]>({
+    queryKey: ["transport", "routes"],
+    queryFn: () => api.getRoutes(),
+  });
 
   const createMutation = useMutation({
     mutationFn: (data: unknown) => api.createBus(data),
@@ -70,203 +72,310 @@ export default function TransportBusesPage() {
     setShowForm(true);
   };
 
-  const buses = busesQuery.data ?? [];
-  const routes = routesQuery.data ?? [];
+  const busStatusMap: Record<string, string> = {
+    active: "active",
+    in_transit: "active",
+    maintenance: "under_maintenance",
+    inactive: "inactive",
+  };
+
+  const busStatusLabel: Record<string, string> = {
+    active: "Active",
+    in_transit: "In Transit",
+    maintenance: "Maintenance",
+    inactive: "Inactive",
+  };
+
+  // Table Columns
+  const columns: ColumnDef<BusVehicle>[] = [
+    {
+      header: "Bus Number",
+      accessorKey: "bus_number",
+      sortable: true,
+      cell: (row) => (
+        <span className="font-mono font-extrabold text-foreground flex items-center gap-1.5">
+          <Bus className="h-3.5 w-3.5 text-blue-500" /> {row.bus_number}
+        </span>
+      ),
+    },
+    {
+      header: "Driver",
+      accessorKey: "driver_name",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-foreground flex items-center gap-1">
+            <User className="h-3 w-3 text-muted-foreground" /> {row.driver_name}
+          </p>
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Phone className="h-3 w-3" /> {row.driver_phone}
+          </p>
+        </div>
+      ),
+    },
+    {
+      header: "Assigned Route",
+      accessorKey: "route_name",
+      sortable: true,
+      cell: (row) =>
+        row.route_name ? (
+          <span className="flex items-center gap-1.5 font-semibold text-violet-600 dark:text-violet-400">
+            <MapPin className="h-3.5 w-3.5" /> {row.route_name}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-xs">No route assigned</span>
+        ),
+    },
+    {
+      header: "Capacity",
+      accessorKey: "capacity",
+      sortable: true,
+      cell: (row) => <span className="font-bold">{row.capacity} seats</span>,
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+      sortable: true,
+      cell: (row) => (
+        <StatusBadge status={busStatusMap[row.status] || "inactive"} label={busStatusLabel[row.status] || row.status} />
+      ),
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: (row) => (
+        <div className="flex items-center gap-1 justify-end">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 px-2 text-emerald-600 hover:bg-emerald-500/10 rounded-xl text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLocationBus(row);
+              setLocForm({ latitude: "12.9716", longitude: "77.5946", speed: "35", status: "moving" });
+            }}
+          >
+            <Wifi className="h-3 w-3 mr-1" /> GPS
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 hover:bg-indigo-500/10 hover:text-indigo-500 rounded-xl"
+            onClick={(e) => { e.stopPropagation(); openEdit(row); }}
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-500/10 rounded-xl"
+            onClick={(e) => { e.stopPropagation(); if (confirm("Delete this bus?")) deleteMutation.mutate(row.id); }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <AuthGuard allowedRoles={["college_admin", "super_admin"]}>
       <DashboardShell title="Fleet Management">
         <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{buses.length} bus{buses.length !== 1 ? "es" : ""} registered</p>
-            <Button onClick={() => { setEditBus(null); resetForm(); setShowForm(!showForm); }} className="gap-2">
-              <Plus className="h-4 w-4" /> Add Bus
-            </Button>
-          </div>
-
-          {/* Add / Edit Form */}
+          {/* Add / Edit Bus Form */}
           {showForm && (
-            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+            <Card className="border-blue-500/30 bg-blue-500/5 dark:bg-blue-950/20 backdrop-blur-xl rounded-3xl shadow-lg">
               <CardHeader>
-                <CardTitle className="text-base">{editBus ? "Edit Bus" : "Register New Bus"}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Bus Number *</label>
-                    <input required value={form.bus_number} onChange={e => setForm(f => ({ ...f, bus_number: e.target.value }))}
-                      placeholder="MH 01 AB 1234" className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Driver Name *</label>
-                    <input required value={form.driver_name} onChange={e => setForm(f => ({ ...f, driver_name: e.target.value }))}
-                      placeholder="Ramesh Kumar" className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Driver Phone *</label>
-                    <input required value={form.driver_phone} onChange={e => setForm(f => ({ ...f, driver_phone: e.target.value }))}
-                      placeholder="+91 9876543210" className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Capacity</label>
-                    <input type="number" min="10" max="80" value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Assign Route</label>
-                    <select value={form.route_id} onChange={e => setForm(f => ({ ...f, route_id: e.target.value }))}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="">-- No Route --</option>
-                      {routes.map(r => <option key={r.id} value={r.id}>{r.route_name}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Status</label>
-                    <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="active">Active</option>
-                      <option value="in_transit">In Transit</option>
-                      <option value="maintenance">Maintenance</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-                  <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-3">
-                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
-                      {editBus ? "Update Bus" : "Register Bus"}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditBus(null); resetForm(); }}>Cancel</Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* GPS Simulator */}
-          {locationBus && (
-            <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Wifi className="h-4 w-4 text-green-600" /> Update GPS Location — {locationBus.bus_number}
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Bus className="h-4 w-4 text-blue-500" />
+                  {editBus ? "Edit Bus Details" : "Register New Bus"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={(e) => { e.preventDefault(); locationMutation.mutate({ id: locationBus.id, data: { latitude: parseFloat(locForm.latitude), longitude: parseFloat(locForm.longitude), speed: parseFloat(locForm.speed), status: locForm.status } }); }}
-                  className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Latitude</label>
-                    <input type="number" step="any" value={locForm.latitude} onChange={e => setLocForm(f => ({ ...f, latitude: e.target.value }))}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Longitude</label>
-                    <input type="number" step="any" value={locForm.longitude} onChange={e => setLocForm(f => ({ ...f, longitude: e.target.value }))}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Speed (km/h)</label>
-                    <input type="number" min="0" value={locForm.speed} onChange={e => setLocForm(f => ({ ...f, speed: e.target.value }))}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Movement Status</label>
-                    <select value={locForm.status} onChange={e => setLocForm(f => ({ ...f, status: e.target.value }))}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                      <option value="moving">Moving</option>
-                      <option value="stopped">Stopped</option>
-                      <option value="idle">Idle</option>
-                      <option value="delayed">Delayed</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
-                    <Button type="submit" disabled={locationMutation.isPending} className="bg-green-600 hover:bg-green-700 text-white">Update GPS Location</Button>
-                    <Button type="button" variant="outline" onClick={() => setLocationBus(null)}>Cancel</Button>
+                <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <FormField
+                    id="bus_number"
+                    label="Bus Number"
+                    value={form.bus_number}
+                    onChange={(val) => setForm((f) => ({ ...f, bus_number: val }))}
+                    required
+                    placeholder="MH 01 AB 1234"
+                    icon={Bus}
+                  />
+
+                  <FormField
+                    id="driver_name"
+                    label="Driver Name"
+                    value={form.driver_name}
+                    onChange={(val) => setForm((f) => ({ ...f, driver_name: val }))}
+                    required
+                    placeholder="Ramesh Kumar"
+                    icon={User}
+                  />
+
+                  <FormField
+                    id="driver_phone"
+                    label="Driver Phone"
+                    type="tel"
+                    value={form.driver_phone}
+                    onChange={(val) => setForm((f) => ({ ...f, driver_phone: val }))}
+                    required
+                    placeholder="+91 9876543210"
+                    icon={Phone}
+                  />
+
+                  <FormField
+                    id="capacity"
+                    label="Seating Capacity"
+                    type="number"
+                    min={10}
+                    max={80}
+                    value={form.capacity}
+                    onChange={(val) => setForm((f) => ({ ...f, capacity: val }))}
+                    icon={Gauge}
+                  />
+
+                  <FormSelect
+                    id="route_id"
+                    label="Assign Route"
+                    value={form.route_id}
+                    onChange={(val) => setForm((f) => ({ ...f, route_id: val }))}
+                    placeholder="-- No Route --"
+                    options={routes.map((r) => ({ value: r.id, label: r.route_name }))}
+                    icon={Navigation}
+                  />
+
+                  <FormSelect
+                    id="status"
+                    label="Bus Status"
+                    value={form.status}
+                    onChange={(val) => setForm((f) => ({ ...f, status: val }))}
+                    options={[
+                      { value: "active", label: "Active" },
+                      { value: "in_transit", label: "In Transit" },
+                      { value: "maintenance", label: "Maintenance" },
+                      { value: "inactive", label: "Inactive" },
+                    ]}
+                  />
+
+                  <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3 pt-2">
+                    <SubmitButton
+                      type="submit"
+                      isLoading={createMutation.isPending || updateMutation.isPending}
+                      loadingText={editBus ? "Updating..." : "Registering..."}
+                      successText={editBus ? "Updated!" : "Registered!"}
+                    >
+                      {editBus ? "Update Bus" : "Register Bus"}
+                    </SubmitButton>
+                    <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditBus(null); resetForm(); }} className="rounded-2xl">
+                      Cancel
+                    </Button>
                   </div>
                 </form>
               </CardContent>
             </Card>
           )}
 
-          {/* Fleet Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Bus className="h-5 w-5 text-blue-600" /> Registered Fleet</CardTitle>
-              <CardDescription>Manage all campus buses and driver assignments</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {busesQuery.isLoading ? (
-                <p className="p-6 text-sm text-muted-foreground">Loading fleet...</p>
-              ) : buses.length === 0 ? (
-                <div className="p-12 text-center">
-                  <Bus className="mx-auto h-12 w-12 text-muted-foreground/40" />
-                  <p className="mt-3 text-sm text-muted-foreground">No buses registered yet</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b bg-muted/30">
-                      <tr className="text-left text-xs text-muted-foreground">
-                        <th className="px-4 py-3 font-medium">Bus No.</th>
-                        <th className="px-4 py-3 font-medium">Driver</th>
-                        <th className="px-4 py-3 font-medium">Route</th>
-                        <th className="px-4 py-3 font-medium">Capacity</th>
-                        <th className="px-4 py-3 font-medium">Status</th>
-                        <th className="px-4 py-3 font-medium text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {buses.map((bus) => (
-                        <tr key={bus.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3 font-semibold">{bus.bus_number}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5">
-                              <User className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>{bus.driver_name}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <Phone className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">{bus.driver_phone}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            {bus.route_name ? (
-                              <div className="flex items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 text-violet-500" />
-                                <span>{bus.route_name}</span>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">No route</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">{bus.capacity} seats</td>
-                          <td className="px-4 py-3">
-                            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[bus.status] ?? statusColors.inactive}`}>
-                              {bus.status.replace("_", " ")}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-green-600 hover:bg-green-50 border-green-200"
-                                onClick={() => { setLocationBus(bus); setLocForm({ latitude: "12.9716", longitude: "77.5946", speed: "35", status: "moving" }); }}>
-                                <Wifi className="h-3 w-3 mr-1" /> GPS
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => openEdit(bus)}>
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-destructive hover:bg-destructive/10"
-                                onClick={() => { if (confirm("Delete this bus?")) deleteMutation.mutate(bus.id); }}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* GPS Location Update Form */}
+          {locationBus && (
+            <Card className="border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 backdrop-blur-xl rounded-3xl shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Wifi className="h-4 w-4 text-emerald-500" />
+                  Update GPS — {locationBus.bus_number}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    locationMutation.mutate({
+                      id: locationBus.id,
+                      data: { latitude: parseFloat(locForm.latitude), longitude: parseFloat(locForm.longitude), speed: parseFloat(locForm.speed), status: locForm.status },
+                    });
+                  }}
+                  className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                >
+                  <FormField
+                    id="latitude"
+                    label="Latitude"
+                    type="number"
+                    step="any"
+                    value={locForm.latitude}
+                    onChange={(val) => setLocForm((f) => ({ ...f, latitude: val }))}
+                    icon={MapPin}
+                  />
+                  <FormField
+                    id="longitude"
+                    label="Longitude"
+                    type="number"
+                    step="any"
+                    value={locForm.longitude}
+                    onChange={(val) => setLocForm((f) => ({ ...f, longitude: val }))}
+                    icon={MapPin}
+                  />
+                  <FormField
+                    id="speed"
+                    label="Speed (km/h)"
+                    type="number"
+                    step="any"
+                    value={locForm.speed}
+                    onChange={(val) => setLocForm((f) => ({ ...f, speed: val }))}
+                    icon={Gauge}
+                  />
+                  <FormSelect
+                    id="loc_status"
+                    label="Movement Status"
+                    value={locForm.status}
+                    onChange={(val) => setLocForm((f) => ({ ...f, status: val }))}
+                    options={[
+                      { value: "moving", label: "Moving" },
+                      { value: "stopped", label: "Stopped" },
+                      { value: "idle", label: "Idle" },
+                      { value: "delayed", label: "Delayed" },
+                    ]}
+                  />
+
+                  <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4 pt-2">
+                    <SubmitButton
+                      type="submit"
+                      variant="success"
+                      isLoading={locationMutation.isPending}
+                      loadingText="Updating GPS..."
+                      successText="GPS Updated!"
+                    >
+                      Update GPS Location
+                    </SubmitButton>
+                    <Button type="button" variant="outline" onClick={() => setLocationBus(null)} className="rounded-2xl">
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Premium Fleet DataTable */}
+          <DataTable
+            title={`Registered Fleet (${buses.length})`}
+            description="Manage all campus buses, drivers, routes, and GPS status"
+            data={buses}
+            columns={columns}
+            searchPlaceholder="Search bus number, driver, route..."
+            searchFields={["bus_number", "driver_name", "driver_phone", "route_name"]}
+            exportFileName="bus_fleet"
+            isLoading={isLoading}
+            emptyMessage="No buses registered. Click 'Add Bus' to register your first vehicle."
+            actions={
+              <Button
+                onClick={() => { setEditBus(null); resetForm(); setShowForm(!showForm); }}
+                className="rounded-2xl bg-blue-600 hover:bg-blue-500 text-white shadow-md text-xs"
+                size="sm"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Bus
+              </Button>
+            }
+          />
         </div>
       </DashboardShell>
     </AuthGuard>

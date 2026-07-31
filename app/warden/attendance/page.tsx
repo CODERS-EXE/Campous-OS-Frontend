@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { api, Attendance, HostelStudent } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth";
+import { FormDatePicker, FormSelect, FormField } from "@/components/shared/forms";
+import { Home } from "lucide-react";
 
 export default function WardenAttendancePage() {
   const { user } = useAuthStore();
@@ -127,45 +129,31 @@ export default function WardenAttendancePage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <Label htmlFor="date">Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="hostel">Hostel</Label>
-                  <select
-                    id="hostel"
-                    value={selectedHostel}
-                    onChange={(e) => setSelectedHostel(e.target.value)}
-                    className="mt-2 block w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="">All Hostels</option>
-                    {hostels.map((hostel) => (
-                      <option key={hostel} value={hostel}>
-                        {hostel}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="search">Search</Label>
-                  <div className="relative mt-2">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search students..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
+                <FormDatePicker
+                  id="date"
+                  label="Date"
+                  value={selectedDate}
+                  onChange={(val) => setSelectedDate(val)}
+                />
+
+                <FormSelect
+                  id="hostel"
+                  label="Hostel"
+                  value={selectedHostel}
+                  onChange={(val) => setSelectedHostel(val)}
+                  placeholder="All Hostels"
+                  options={hostels.map((h) => ({ value: h, label: h }))}
+                  icon={Home}
+                />
+
+                <FormField
+                  id="search"
+                  label="Search Students"
+                  value={searchQuery}
+                  onChange={(val) => setSearchQuery(val)}
+                  placeholder="Search students..."
+                  icon={Search}
+                />
               </div>
             </CardContent>
           </Card>

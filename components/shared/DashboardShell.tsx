@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
   BookOpen,
@@ -22,10 +22,17 @@ import {
   Sun,
   Users,
   X,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  User as UserIcon,
+  ChevronDown,
+  Monitor,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CampusLogo } from "@/components/shared/CampusLogo";
 import { cn, getRoleDashboardPath } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth";
@@ -132,6 +139,23 @@ const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.Eleme
   ],
 };
 
+function useOnClickOutside(ref: React.RefObject<HTMLElement>, handler: (event: MouseEvent | TouchEvent) => void) {
+  useEffect(() => {
+    const listener = (event: MouseEvent | TouchEvent) => {
+      if (!ref.current || ref.current.contains(event.target as Node)) {
+        return;
+      }
+      handler(event);
+    };
+    document.addEventListener("mousedown", listener);
+    document.addEventListener("touchstart", listener);
+    return () => {
+      document.removeEventListener("mousedown", listener);
+      document.removeEventListener("touchstart", listener);
+    };
+  }, [ref, handler]);
+}
+
 export function DashboardShell({
   children,
   title,
@@ -142,116 +166,281 @@ export function DashboardShell({
   const pathname = usePathname();
   const { user, college, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
+  
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  
+  const profileRef = useRef<HTMLDivElement>(null);
+  useOnClickOutside(profileRef, () => setProfileOpen(false));
 
   const items = user ? NAV_ITEMS[user.role] || [] : [];
 
+  // Generate breadcrumb path
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const breadcrumb = pathSegments.map((segment, index) => {
+    const isLast = index === pathSegments.length - 1;
+    // Format segment text nicely
+    const formattedSegment = segment.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const href = '/' + pathSegments.slice(0, index + 1).join('/');
+    
+    return {
+      label: formattedSegment,
+      href,
+      isLast
+    };
+  });
+
+  // Get user avatar initials
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile header */}
-      <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 px-4 lg:hidden shadow-sm">
-        <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
-          <Menu className="h-5 w-5" />
-        </Button>
-        <CampusLogo variant="icon" className="h-8 w-8" />
-        <span className="font-heading font-semibold text-lg">{college?.name || "CampusOS"}</span>
-        <div className="ml-auto">
-          <NotificationBadge />
-        </div>
-      </header>
-
-      {/* Mobile sidebar overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <motion.aside
-            initial={{ x: -280 }}
-            animate={{ x: 0 }}
-            transition={{ type: "spring", damping: 30 }}
-            className="absolute left-0 top-0 h-full w-72 bg-card border-r shadow-2xl flex flex-col"
-          >
-            <div className="h-16 border-b px-6 flex items-center justify-between">
-              <CampusLogo />
-              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <NavLinks items={items} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-            </div>
-            <div className="border-t p-4 bg-muted/30">
-              <div className="mb-3 rounded-lg bg-card p-3">
-                <p className="font-medium text-sm">{user?.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user?.role.replace("_", " ")}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="shrink-0"
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      
+      {/* ── Mobile Sidebar Overlay ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+              className="absolute left-0 top-0 h-full w-72 bg-card border-r shadow-2xl flex flex-col"
+            >
+              <div className="h-16 border-b px-6 flex items-center justify-between shrink-0">
+                <Link href={user ? getRoleDashboardPath(user.role) : "/"} className="flex items-center gap-3">
+                  <CampusLogo variant="icon" className="h-8 w-8" />
+                  <span className="font-heading font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+                    CampusOS
+                  </span>
+                </Link>
+                <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} className="rounded-full">
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
-            </div>
-          </motion.aside>
-        </div>
-      )}
-
-      <div className="flex">
-        {/* Desktop sidebar */}
-        <aside className="hidden min-h-screen w-72 shrink-0 border-r bg-card lg:block lg:sticky lg:top-0 lg:h-screen">
-          <div className="flex h-full flex-col">
-            <div className="flex h-16 items-center border-b px-6">
-              <Link href={user ? getRoleDashboardPath(user.role) : "/"} className="flex items-center gap-3 transition-opacity hover:opacity-80">
-                <CampusLogo variant="icon" className="h-8 w-8" />
-                <div className="flex flex-col">
-                  <span className="font-heading font-bold text-sm gradient-text">CampusOS</span>
-                  <span className="text-xs text-muted-foreground truncate max-w-[140px]">{college?.name}</span>
-                </div>
-              </Link>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <NavLinks items={items} pathname={pathname} />
-            </div>
-            <div className="border-t p-4 bg-muted/30">
-              <div className="mb-3 rounded-lg bg-gradient-primary/10 border border-primary/20 p-3">
-                <p className="font-medium text-sm">{user?.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user?.role.replace("_", " ")}</p>
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <NavLinks items={items} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="shrink-0"
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-                </Button>
-              </div>
-            </div>
+            </motion.aside>
           </div>
-        </aside>
+        )}
+      </AnimatePresence>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-x-hidden">
-          <div className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-16 items-center justify-between px-4 md:px-8">
-              <h1 className="font-heading text-2xl font-bold tracking-tight">{title}</h1>
-              <div className="hidden lg:flex">
+      <div className="flex h-screen overflow-hidden">
+        
+        {/* ── Desktop Sidebar ── */}
+        <motion.aside
+          initial={false}
+          animate={{ width: collapsed ? 80 : 280 }}
+          className={cn(
+            "hidden lg:flex shrink-0 flex-col border-r bg-card/50 backdrop-blur-xl relative z-40",
+            "transition-[width] duration-300 ease-in-out"
+          )}
+        >
+          {/* Collapse Toggle Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            className="absolute -right-4 top-5 h-8 w-8 rounded-full border shadow-sm z-50 bg-background"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+
+          <div className="flex h-16 shrink-0 items-center border-b px-6 overflow-hidden">
+            <Link href={user ? getRoleDashboardPath(user.role) : "/"} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+              <CampusLogo variant="icon" className="h-8 w-8 shrink-0" />
+              <AnimatePresence mode="wait">
+                {!collapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
+                    className="flex flex-col whitespace-nowrap overflow-hidden"
+                  >
+                    <span className="font-heading font-bold text-[15px] tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
+                      CampusOS
+                    </span>
+                    <span className="text-[11px] font-medium text-muted-foreground truncate max-w-[150px]">
+                      {college?.name}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Link>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+            <NavLinks items={items} pathname={pathname} collapsed={collapsed} />
+          </div>
+        </motion.aside>
+
+        {/* ── Main Content Area ── */}
+        <main className="flex-1 flex flex-col min-w-0 bg-background/50 relative">
+          
+          {/* ── Top Navbar ── */}
+          <header className="sticky top-0 z-30 h-16 shrink-0 flex items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-md px-4 md:px-8 transition-colors">
+            
+            {/* Left: Mobile Menu & Breadcrumb */}
+            <div className="flex items-center gap-4 flex-1">
+              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="lg:hidden shrink-0 rounded-full">
+                <Menu className="h-5 w-5" />
+              </Button>
+
+              <div className="hidden md:flex items-center text-sm text-muted-foreground">
+                <Link href={user ? getRoleDashboardPath(user.role) : "/"} className="hover:text-foreground transition-colors flex items-center">
+                  <Home className="h-4 w-4" />
+                </Link>
+                {breadcrumb.length > 0 && <ChevronRight className="h-4 w-4 mx-1 opacity-50 shrink-0" />}
+                {breadcrumb.map((crumb, idx) => (
+                  <div key={crumb.href} className="flex items-center truncate">
+                    {crumb.isLast ? (
+                      <span className="font-medium text-foreground truncate">{title || crumb.label}</span>
+                    ) : (
+                      <>
+                        <Link href={crumb.href} className="hover:text-foreground transition-colors truncate">
+                          {crumb.label}
+                        </Link>
+                        <ChevronRight className="h-4 w-4 mx-1 opacity-50 shrink-0" />
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Middle: Global Search (Hidden on small) */}
+            <div className="hidden lg:flex max-w-md w-full relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              </div>
+              <Input 
+                placeholder="Search anything..." 
+                className="pl-10 bg-muted/50 border-transparent focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-primary rounded-full transition-all"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
+            </div>
+
+            {/* Right: Notifications & Profile */}
+            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+              <div className="hidden sm:block">
                 <NotificationBadge />
               </div>
+              
+              {/* Profile Menu Dropdown */}
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="flex items-center gap-2 rounded-full p-1 pr-2 md:pr-3 hover:bg-muted transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-semibold text-xs md:text-sm shadow-sm">
+                    {initials}
+                  </div>
+                  <div className="hidden md:flex flex-col items-start text-left max-w-[120px]">
+                    <span className="text-sm font-medium truncate w-full">{user?.name}</span>
+                    <span className="text-[10px] text-muted-foreground capitalize truncate w-full">{user?.role.replace("_", " ")}</span>
+                  </div>
+                  <ChevronDown className="hidden md:block h-4 w-4 text-muted-foreground opacity-50" />
+                </button>
+
+                <AnimatePresence>
+                  {profileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className="absolute right-0 mt-2 w-64 rounded-xl border bg-card p-2 shadow-xl z-50 overflow-hidden"
+                    >
+                      <div className="flex items-center gap-3 p-3 mb-2 border-b bg-muted/30 rounded-lg">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-semibold shadow-sm shrink-0">
+                          {initials}
+                        </div>
+                        <div className="flex flex-col overflow-hidden">
+                          <p className="text-sm font-medium truncate">{user?.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Link href={user ? `/${user.role.replace("_", "-")}/profile` : "#"} onClick={() => setProfileOpen(false)}>
+                          <div className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors cursor-pointer">
+                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                            <span>My Profile</span>
+                          </div>
+                        </Link>
+                        
+                        <div className="flex items-center justify-between px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors">
+                          <div className="flex items-center gap-2">
+                            {theme === "dark" ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
+                            <span>Theme</span>
+                          </div>
+                          <div className="flex items-center bg-muted/50 rounded-full p-0.5 border">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTheme("light"); }}
+                              className={cn("p-1 rounded-full transition-colors", theme === "light" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                            >
+                              <Sun className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTheme("dark"); }}
+                              className={cn("p-1 rounded-full transition-colors", theme === "dark" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                            >
+                              <Moon className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTheme("system"); }}
+                              className={cn("p-1 rounded-full transition-colors", theme === "system" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                            >
+                              <Monitor className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-border my-1" />
+                        
+                        <button
+                          onClick={() => { setProfileOpen(false); logout(); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Log out</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-          </div>
-          <div className="p-4 md:p-8">
-            {children}
+          </header>
+
+          {/* ── Page Content ── */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            {/* Title is mainly displayed in breadcrumb now, but keeping for mobile / emphasis if needed. We can hide it since we have breadcrumbs, or keep it standard. */}
+            <div className="md:hidden mb-6 flex items-center justify-between">
+              <h1 className="font-heading text-2xl font-bold tracking-tight">{title}</h1>
+              <NotificationBadge />
+            </div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {children}
+            </motion.div>
           </div>
         </main>
       </div>
@@ -263,33 +452,51 @@ export function DashboardShell({
 function NavLinks({
   items,
   pathname,
+  collapsed = false,
   onNavigate,
 }: {
   items: { href: string; label: string; icon: React.ElementType }[];
   pathname: string;
+  collapsed?: boolean;
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="space-y-1">
+    <nav className="space-y-1.5 pb-20 lg:pb-0">
       {items.map(({ href, label, icon: Icon }) => {
-        const isActive = pathname === href;
+        const isActive = pathname === href || pathname.startsWith(href + "/");
         return (
           <Link
             key={href}
             href={href}
             onClick={onNavigate}
+            title={collapsed ? label : undefined}
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 relative",
+              collapsed ? "justify-center" : "",
               isActive
-                ? "bg-gradient-primary text-white shadow-brand"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                ? "bg-primary/10 text-primary dark:bg-primary/15"
+                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
             )}
           >
+            {/* Active Indicator Line */}
+            {isActive && (
+              <motion.div
+                layoutId="activeNav"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
+                initial={false}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              />
+            )}
+            
             <Icon className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              isActive ? "scale-110" : "group-hover:scale-105"
+              "shrink-0 transition-transform duration-200",
+              collapsed ? "h-5 w-5" : "h-4.5 w-4.5",
+              isActive ? "scale-110" : "group-hover:scale-110"
             )} />
-            <span>{label}</span>
+            
+            {!collapsed && (
+              <span className="truncate">{label}</span>
+            )}
           </Link>
         );
       })}

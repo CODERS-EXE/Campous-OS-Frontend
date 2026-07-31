@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api, Student, UpdateUserPayload, User } from "@/lib/api";
+import { DataTable, ColumnDef } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Edit2, Trash2, HeartHandshake, User as UserIcon, Mail, Phone } from "lucide-react";
+import { FormField, PasswordField, SubmitButton } from "@/components/shared/forms";
 
 interface ParentForm extends UpdateUserPayload {
   name: string;
@@ -24,9 +27,7 @@ export default function ParentsPage() {
   const [selectedParent, setSelectedParent] = useState<User | null>(null);
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [search, setSearch] = useState("");
-  const [phoneFilter, setPhoneFilter] = useState("");
-  const [page, setPage] = useState(1);
+
   const [form, setForm] = useState<ParentForm>({
     name: "",
     email: "",
@@ -35,33 +36,24 @@ export default function ParentsPage() {
     student_ids: [],
   });
 
-  const { data: parents, isLoading } = useQuery({
+  const { data: parents = [], isLoading } = useQuery({
     queryKey: ["parents"],
     queryFn: () => api.get<User[]>("/api/v1/users/parents"),
   });
 
-  const { data: students } = useQuery({
+  const { data: students = [] } = useQuery({
     queryKey: ["students"],
     queryFn: () => api.get<Student[]>("/api/v1/users/students"),
   });
 
-  const filteredParents = useMemo(() => {
-    if (!parents) return [];
-    const normalizedSearch = search.toLowerCase();
-    return parents.filter((parent) => {
-      const parentPhone = String(parent.profile?.phone ?? "");
-      const matchesSearch =
-        parent.name.toLowerCase().includes(normalizedSearch) ||
-        parent.email.toLowerCase().includes(normalizedSearch) ||
-        parentPhone.toLowerCase().includes(normalizedSearch);
-      const matchesPhone = phoneFilter ? parentPhone.includes(phoneFilter) : true;
-      return matchesSearch && matchesPhone;
-    });
-  }, [parents, search, phoneFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredParents.length / 8));
-  const currentPage = Math.min(page, totalPages);
-  const paginatedParents = filteredParents.slice((currentPage - 1) * 8, currentPage * 8);
+  const studentLookup = useMemo(
+    () =>
+      students.reduce<Record<string, Student>>((acc, student) => {
+        acc[student.id] = student;
+        return acc;
+      }, {}),
+    [students]
+  );
 
   const createMutation = useMutation({
     mutationFn: (body: ParentForm) =>
@@ -95,7 +87,7 @@ export default function ParentsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete<{ ok: boolean }>(`/api/v1/users/${id}`),
     onSuccess: () => {
-      setMessage("Parent user deleted successfully.");
+      setMessage("Parent user removed successfully.");
       setError("");
       queryClient.invalidateQueries({ queryKey: ["parents"] });
     },
@@ -154,205 +146,195 @@ export default function ParentsPage() {
     setForm({ name: "", email: "", password: "", phone: "", student_ids: [] });
   };
 
-  const studentLookup = useMemo(
-    () =>
-      (students ?? []).reduce<Record<string, Student>>((acc, student) => {
-        acc[student.id] = student;
-        return acc;
-      }, {}),
-    [students]
-  );
+  // Define Table Columns
+  const columns: ColumnDef<User>[] = [
+    {
+      header: "Guardian Name",
+      accessorKey: "name",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-foreground">{row.name}</p>
+          <p className="text-[11px] text-muted-foreground">{row.email}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Contact Phone",
+      id: "phone",
+      cell: (row) => <span className="font-mono text-xs">{String(row.profile?.phone ?? "—")}</span>,
+    },
+    {
+      header: "Linked Student(s)",
+      id: "students",
+      cell: (row) => {
+        const studentIds = Array.isArray(row.profile?.student_ids) ? (row.profile.student_ids as string[]) : [];
+        if (studentIds.length === 0) return <span className="text-muted-foreground text-xs">No children linked</span>;
+        return (
+          <div className="space-y-0.5">
+            <span className="font-bold text-xs text-primary">{studentIds.length} Student(s)</span>
+            <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+              {studentIds.map((id) => studentLookup[id]?.name ?? "Student").join(", ")}
+            </p>
+          </div>
+        );
+      },
+    },
+    {
+      header: "Status",
+      id: "status",
+      cell: () => <StatusBadge status="active" label="Verified Guardian" />,
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: (row) => (
+        <div className="flex items-center gap-1.5 justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl hover:bg-blue-500/10 hover:text-blue-500"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row);
+            }}
+            className="h-8 w-8 p-0 rounded-xl text-rose-500 hover:bg-rose-500/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <AuthGuard allowedRoles={["college_admin"]}>
-      <DashboardShell title="Parents">
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>{selectedParent ? "Edit Parent" : "Add Parent"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
+      <DashboardShell title="Parents Management">
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+            {/* Form Card */}
+            <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-lg rounded-3xl h-fit">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <HeartHandshake className="h-5 w-5 text-blue-500" />
+                  {selectedParent ? "Edit Guardian Record" : "Add Parent / Guardian"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <FormField
                     id="name"
+                    label="Guardian Name"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(val) => setForm({ ...form, name: val })}
                     required
+                    placeholder="e.g. Vikram Sharma"
+                    icon={UserIcon}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
+
+                  <FormField
                     id="email"
+                    label="Email Address"
                     type="email"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={(val) => setForm({ ...form, email: val })}
                     required
+                    placeholder="parent@gmail.com"
+                    icon={Mail}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
+
+                  <PasswordField
                     id="password"
-                    type="password"
+                    label="Password"
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onChange={(val) => setForm({ ...form, password: val })}
                     required={!selectedParent}
                     placeholder={selectedParent ? "Leave blank to keep current" : "Minimum 8 characters"}
+                    showStrength={!selectedParent}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Contact Number</Label>
-                  <Input
+
+                  <FormField
                     id="phone"
+                    label="Contact Phone Number"
                     type="tel"
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={(val) => setForm({ ...form, phone: val })}
+                    placeholder="+91 98765 43210"
+                    icon={Phone}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="student_ids">Linked Students</Label>
-                  <select
-                    id="student_ids"
-                    multiple
-                    className="h-40 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-                    value={form.student_ids}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        student_ids: Array.from(e.target.selectedOptions, (option) => option.value),
-                      })
-                    }
-                  >
-                    {(students ?? []).map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.name} — {student.roll_no}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                {message && <p className="text-sm text-primary">{message}</p>}
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <Button type="submit" disabled={createMutation.status === "pending" || updateMutation.status === "pending"}>
-                    {selectedParent ? (updateMutation.status === "pending" ? "Updating..." : "Update Parent") : (createMutation.status === "pending" ? "Creating..." : "Add Parent")}
-                  </Button>
-                  {selectedParent && (
-                    <Button variant="outline" type="button" onClick={handleCancel}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Parent Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Manage parent users for your college.</p>
-              <div className="mt-4 space-y-2 text-sm">
-                <p>Total parents: <span className="font-semibold">{parents?.length ?? 0}</span></p>
-                <p>{selectedParent ? "Editing an existing parent." : "Create a new parent profile."}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <CardTitle>All Parents ({filteredParents.length})</CardTitle>
-                <p className="text-sm text-muted-foreground">Search, filter, and manage parent contacts tied to students.</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
-                  <Input
-                    id="search"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Name, email, phone"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone-filter">Phone</Label>
-                  <Input
-                    id="phone-filter"
-                    value={phoneFilter}
-                    onChange={(e) => {
-                      setPhoneFilter(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Contact number"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : filteredParents.length > 0 ? (
-              <div className="space-y-3">
-                {paginatedParents.map((parent) => (
-                  <div key={parent.id} className="flex flex-col gap-3 rounded-xl border p-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="font-medium">{parent.name}</p>
-                      <p className="text-sm text-muted-foreground">{parent.email}</p>
-                      <p className="text-sm text-muted-foreground">Phone: {String(parent.profile?.phone ?? "-")}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Linked students: {Array.isArray(parent.profile?.student_ids) ? parent.profile.student_ids.length : 0}
-                      </p>
-                      {Array.isArray(parent.profile?.student_ids) && parent.profile.student_ids.length > 0 && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {parent.profile.student_ids
-                            .map((id) => studentLookup[id]?.name ?? "Unknown")
-                            .join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(parent)}>
-                        Edit
-                      </Button>
-                      <Button type="button" variant="destructive" size="sm" onClick={() => handleDelete(parent)}>
-                        Delete
-                      </Button>
-                    </div>
+                  <div>
+                    <Label htmlFor="student_ids" className="text-xs font-semibold">Link Students (Hold Ctrl/Cmd)</Label>
+                    <select
+                      id="student_ids"
+                      multiple
+                      className="mt-1 h-36 w-full rounded-2xl border border-border/80 bg-background/80 backdrop-blur-sm px-3 py-2 text-xs font-semibold focus:outline-none focus:border-primary transition-all duration-200"
+                      value={form.student_ids}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          student_ids: Array.from(e.target.selectedOptions, (option) => option.value),
+                        })
+                      }
+                    >
+                      {students.map((student) => (
+                        <option key={student.id} value={student.id}>
+                          {student.name} ({student.roll_no})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="py-8 text-center text-muted-foreground">No parent users registered yet.</p>
-            )}
-          </CardContent>
-          <div className="flex items-center justify-between border-t px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              Showing {Math.min(8, filteredParents.length - (currentPage - 1) * 8)} of {filteredParents.length} parents
-            </p>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((prev) => Math.max(prev - 1, 1))}>
-                Previous
-              </Button>
-              <Button type="button" variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}>
-                Next
-              </Button>
+
+                  {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
+                  {message && <p className="text-xs text-emerald-500 font-semibold">{message}</p>}
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    {selectedParent && (
+                      <Button variant="outline" type="button" onClick={handleCancel} className="rounded-2xl">
+                        Cancel
+                      </Button>
+                    )}
+                    <SubmitButton
+                      type="submit"
+                      isLoading={createMutation.status === "pending" || updateMutation.status === "pending"}
+                      loadingText={selectedParent ? "Updating..." : "Creating..."}
+                      successText={selectedParent ? "Updated!" : "Added!"}
+                    >
+                      {selectedParent ? "Update Guardian" : "Add Guardian"}
+                    </SubmitButton>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Premium Data Table */}
+            <div>
+              <DataTable
+                title={`Parents & Guardians (${parents.length})`}
+                description="Sticky header table with live search, pagination & CSV export"
+                data={parents}
+                columns={columns}
+                searchPlaceholder="Search parents by name, email, phone..."
+                searchFields={["name", "email"]}
+                exportFileName="parents_directory"
+                isLoading={isLoading}
+                emptyMessage="No parent accounts match your search query."
+              />
             </div>
           </div>
-        </Card>
+        </div>
       </DashboardShell>
     </AuthGuard>
   );

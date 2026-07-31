@@ -16,9 +16,9 @@ import {
   Shield,
   Star,
   User,
+  Users,
   Activity,
   Sparkles,
-  Lock,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -29,14 +29,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, Student } from "@/lib/api";
+import { api, DashboardStats } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
-import { formatDate } from "@/lib/utils";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileModal } from "@/components/profile/ProfileModal";
 import { ProfileStatCard } from "@/components/profile/ProfileStatCard";
 
-export default function StudentProfilePage() {
+export default function FacultyProfilePage() {
   const { user, college } = useAuthStore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -47,7 +46,6 @@ export default function StudentProfilePage() {
     name: user?.name || "",
     email: user?.email || "",
     phone: "",
-    emergency_contact: "",
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -56,13 +54,11 @@ export default function StudentProfilePage() {
     confirmPassword: "",
   });
 
-  const studentQuery = useQuery<Student>({
-    queryKey: ["student-profile"],
-    queryFn: () => api.get<Student>("/api/v1/users/me/profile"),
+  const statsQuery = useQuery<DashboardStats>({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => api.get<DashboardStats>("/api/v1/users/dashboard/stats"),
     enabled: !!user,
   });
-
-  const student = studentQuery.data;
 
   const copyToClipboard = (text: string, label: string) => {
     if (!text) return;
@@ -88,7 +84,7 @@ export default function StudentProfilePage() {
       toast.error("New passwords do not match!");
       return;
     }
-    toast.success("Password updated successfully!");
+    toast.success("Password changed successfully!");
     setShowPasswordModal(false);
     setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
   };
@@ -99,33 +95,31 @@ export default function StudentProfilePage() {
       .map((n) => n[0])
       .join("")
       .substring(0, 2)
-      .toUpperCase() || "ST";
+      .toUpperCase() || "FC";
 
   const badges = [
-    { label: "Student", icon: GraduationCap },
-    ...(student?.department ? [{ label: student.department, icon: Building2 }] : []),
+    { label: "Faculty Educator", icon: BookOpen },
     ...(college?.name ? [{ label: college.name, icon: Building2 }] : []),
   ];
 
   return (
-    <AuthGuard allowedRoles={["student"]}>
-      <DashboardShell title="Student Profile">
+    <AuthGuard allowedRoles={["faculty"]}>
+      <DashboardShell title="Faculty Profile">
         <div className="space-y-8 pb-12">
           {/* ── Cover Banner & Header ── */}
           <ProfileHeader
-            name={user?.name || "Student"}
+            name={`Prof. ${user?.name || ""}`}
             email={user?.email}
-            roleTitle="Student Scholar"
-            roleTheme="student"
-            statusText="Active Student"
+            roleTitle="Academic Faculty"
+            roleTheme="faculty"
+            statusText="Active Educator"
             badges={badges}
             initials={initials}
             onEditProfile={() => {
               setEditForm({
                 name: user?.name || "",
                 email: user?.email || "",
-                phone: student?.emergency_contact || "",
-                emergency_contact: student?.emergency_contact || "",
+                phone: "",
               });
               setShowEditModal(true);
             }}
@@ -140,38 +134,38 @@ export default function StudentProfilePage() {
             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
           >
             <ProfileStatCard
-              title="Current Academic Year"
-              value={`Year ${student?.year || 1}`}
-              subtitle={`Semester ${student?.semester || 1}`}
-              icon={BookOpen}
-              variant="indigo"
-            />
-            <ProfileStatCard
-              title="Academic Roll Number"
-              value={student?.roll_no || "STU-2026"}
-              subtitle="Verified Identity"
-              icon={Award}
-              variant="purple"
-            />
-            <ProfileStatCard
-              title="Attendance Rate"
-              value="92.4%"
-              subtitle="Good Standing ⭐"
-              icon={CheckCircle2}
+              title="Total Students Enrolled"
+              value={statsQuery.data?.total_students ?? "—"}
+              subtitle="Active Across Courses"
+              icon={Users}
               variant="emerald"
             />
             <ProfileStatCard
-              title="Account Status"
-              value="Verified"
-              subtitle="CampusOS Student"
-              icon={Shield}
+              title="Academic Staff Role"
+              value="Professor"
+              subtitle="Department Educator"
+              icon={BookOpen}
               variant="teal"
+            />
+            <ProfileStatCard
+              title="Marks Evaluation Rate"
+              value="98%"
+              subtitle="On-time Assessment"
+              icon={Award}
+              variant="indigo"
+            />
+            <ProfileStatCard
+              title="Faculty Status"
+              value="Verified"
+              subtitle="CampusOS Academic Staff"
+              icon={Shield}
+              variant="purple"
             />
           </motion.div>
 
-          {/* ── Main Details Grid: Personal & College Info ── */}
+          {/* ── Main Details Grid ── */}
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left 2 Cols: Academic & Contact Info */}
+            {/* Left 2 Cols: Credentials & Accolades */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -181,15 +175,15 @@ export default function StudentProfilePage() {
               <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <User className="h-5 w-5 text-indigo-500" /> Academic & Personal Information
+                    <User className="h-5 w-5 text-emerald-500" /> Faculty Details & Credentials
                   </CardTitle>
-                  <CardDescription>Verified student profile records</CardDescription>
+                  <CardDescription>Verified academic staff profile information</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-border/60 bg-background/50 hover:border-indigo-500/30 transition-all">
+                    <div className="flex items-center justify-between p-4 rounded-2xl border border-border/60 bg-background/50 hover:border-emerald-500/30 transition-all">
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                           <Mail className="h-5 w-5" />
                         </div>
                         <div className="overflow-hidden">
@@ -200,113 +194,92 @@ export default function StudentProfilePage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 shrink-0 hover:bg-indigo-500/10 hover:text-indigo-500"
+                        className="h-8 w-8 shrink-0 hover:bg-emerald-500/10 hover:text-emerald-500"
                         onClick={() => copyToClipboard(user?.email || "", "Email")}
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-border/60 bg-background/50 hover:border-purple-500/30 transition-all">
+                    <div className="flex items-center justify-between p-4 rounded-2xl border border-border/60 bg-background/50 hover:border-teal-500/30 transition-all">
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
-                          <Award className="h-5 w-5" />
+                        <div className="h-10 w-10 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0">
+                          <User className="h-5 w-5" />
                         </div>
                         <div className="overflow-hidden">
-                          <p className="text-xs text-muted-foreground font-medium">Roll Number</p>
-                          <p className="text-sm font-semibold font-mono">{student?.roll_no || "STU-2026"}</p>
+                          <p className="text-xs text-muted-foreground font-medium">Faculty User ID</p>
+                          <p className="text-sm font-semibold font-mono">{user?.id?.slice(0, 16)}…</p>
                         </div>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 shrink-0 hover:bg-purple-500/10 hover:text-purple-500"
-                        onClick={() => copyToClipboard(student?.roll_no || "STU-2026", "Roll No")}
+                        className="h-8 w-8 shrink-0 hover:bg-teal-500/10 hover:text-teal-500"
+                        onClick={() => copyToClipboard(user?.id || "", "User ID")}
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
                     </div>
 
                     <div className="flex items-center gap-3 p-4 rounded-2xl border border-border/60 bg-background/50">
-                      <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                      <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
                         <Building2 className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground font-medium">Department</p>
-                        <p className="text-sm font-semibold">{student?.department || "Computer Science & Engineering"}</p>
+                        <p className="text-xs text-muted-foreground font-medium">Assigned Institution</p>
+                        <p className="text-sm font-semibold">{college?.name || "CampusOS Institution"}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 p-4 rounded-2xl border border-border/60 bg-background/50">
-                      <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                      <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
                         <BookOpen className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground font-medium">Course Program</p>
-                        <p className="text-sm font-semibold">{student?.course || "B.Tech Undergraduate"}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-4 rounded-2xl border border-border/60 bg-background/50">
-                      <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-                        <User className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-medium">Blood Group</p>
-                        <p className="text-sm font-semibold">{student?.blood_group || "O+"}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-4 rounded-2xl border border-border/60 bg-background/50">
-                      <div className="h-10 w-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center shrink-0">
-                        <Phone className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-medium">Emergency Contact</p>
-                        <p className="text-sm font-semibold">{student?.emergency_contact || "+91 98765 43210"}</p>
+                        <p className="text-xs text-muted-foreground font-medium">Academic Designation</p>
+                        <p className="text-sm font-semibold">Professor & Educator</p>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Achievements & Badges */}
+              {/* Accolades */}
               <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Star className="h-5 w-5 text-amber-500" /> Academic Achievements & Badges
+                    <Star className="h-5 w-5 text-amber-500" /> Faculty Accolades & Recognition
                   </CardTitle>
-                  <CardDescription>Verified academic accolades & milestones</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="flex items-center gap-3 p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5">
-                      <div className="h-11 w-11 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xl shrink-0">
-                        ⭐
+                    <div className="flex items-center gap-3 p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
+                      <div className="h-11 w-11 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0">
+                        👨‍🏫
                       </div>
                       <div>
-                        <h4 className="font-bold text-xs">High Attendance</h4>
-                        <p className="text-[10px] text-muted-foreground">Above 90% attendance</p>
+                        <h4 className="font-bold text-xs">Verified Educator</h4>
+                        <p className="text-[10px] text-muted-foreground">CampusOS Staff</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
                       <div className="h-11 w-11 rounded-2xl bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xl shrink-0">
-                        🎓
+                        📝
                       </div>
                       <div>
-                        <h4 className="font-bold text-xs">Active Scholar</h4>
-                        <p className="text-[10px] text-muted-foreground">Semester Verified</p>
+                        <h4 className="font-bold text-xs">Evaluation Star</h4>
+                        <p className="text-[10px] text-muted-foreground">Prompt grading rate</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
-                      <div className="h-11 w-11 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0">
-                        ⚡
+                    <div className="flex items-center gap-3 p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5">
+                      <div className="h-11 w-11 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xl shrink-0">
+                        ⭐
                       </div>
                       <div>
-                        <h4 className="font-bold text-xs">Early Submitter</h4>
-                        <p className="text-[10px] text-muted-foreground">Assignments on time</p>
+                        <h4 className="font-bold text-xs">Class Mentor</h4>
+                        <p className="text-[10px] text-muted-foreground">Student guidance</p>
                       </div>
                     </div>
                   </div>
@@ -314,7 +287,7 @@ export default function StudentProfilePage() {
               </Card>
             </motion.div>
 
-            {/* Right Col: College Metadata & Activity Timeline */}
+            {/* Right Col: College & Activity Timeline */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -324,53 +297,40 @@ export default function StudentProfilePage() {
               <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-indigo-500" /> Institution Details
+                    <Building2 className="h-5 w-5 text-emerald-500" /> College Metadata
                   </CardTitle>
-                  <CardDescription>College metadata</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="p-4 rounded-2xl border border-border/60 bg-background/50">
                     <p className="text-xs text-muted-foreground font-medium">Institution</p>
-                    <p className="text-sm font-bold text-foreground mt-0.5">{college?.name || "CampusOS University"}</p>
+                    <p className="text-sm font-bold text-foreground mt-0.5">{college?.name || "CampusOS"}</p>
                   </div>
                   <div className="p-4 rounded-2xl border border-border/60 bg-background/50">
                     <p className="text-xs text-muted-foreground font-medium">Domain</p>
-                    <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5 font-mono">
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
                       {college?.subdomain || "demo"}.campusos.com
                     </p>
                   </div>
-                  {student?.created_at && (
-                    <div className="p-4 rounded-2xl border border-border/60 bg-background/50">
-                      <p className="text-xs text-muted-foreground font-medium">Enrolled Since</p>
-                      <p className="text-sm font-semibold text-foreground mt-0.5">{formatDate(student.created_at)}</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
-              {/* Activity Timeline */}
               <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-indigo-500" /> Activity Timeline
+                    <Activity className="h-5 w-5 text-emerald-500" /> Activity Log
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="relative pl-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border space-y-4">
                     <div className="relative">
                       <div className="absolute -left-6 top-1 h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-background" />
-                      <p className="text-xs font-bold text-foreground">Student Session Authenticated</p>
+                      <p className="text-xs font-bold text-foreground">Faculty Session Authenticated</p>
                       <p className="text-[11px] text-muted-foreground">Today at {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
                     </div>
                     <div className="relative">
-                      <div className="absolute -left-6 top-1 h-3 w-3 rounded-full bg-indigo-500 ring-4 ring-background" />
-                      <p className="text-xs font-bold text-foreground">Profile View Logged</p>
-                      <p className="text-[11px] text-muted-foreground">CampusOS Token Verified</p>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute -left-6 top-1 h-3 w-3 rounded-full bg-purple-500 ring-4 ring-background" />
-                      <p className="text-xs font-bold text-foreground">Semester Attendance Verified</p>
-                      <p className="text-[11px] text-muted-foreground">Status: Good Standing (92.4%)</p>
+                      <div className="absolute -left-6 top-1 h-3 w-3 rounded-full bg-teal-500 ring-4 ring-background" />
+                      <p className="text-xs font-bold text-foreground">Class Attendance Logged</p>
+                      <p className="text-[11px] text-muted-foreground">All assigned batches verified</p>
                     </div>
                   </div>
                 </CardContent>
@@ -383,8 +343,8 @@ export default function StudentProfilePage() {
         <ProfileModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
-          title="Edit Student Profile"
-          description="Update your personal contact information"
+          title="Edit Faculty Profile"
+          description="Update your faculty profile details"
           onSave={handleEditSave}
           saveText="Save Changes"
         >
@@ -405,15 +365,6 @@ export default function StudentProfilePage() {
                 className="mt-1 rounded-2xl bg-muted/50 cursor-not-allowed"
               />
             </div>
-            <div>
-              <Label className="text-xs font-semibold">Emergency Contact Phone</Label>
-              <Input
-                placeholder="+91 98765 43210"
-                value={editForm.emergency_contact}
-                onChange={(e) => setEditForm({ ...editForm, emergency_contact: e.target.value })}
-                className="mt-1 rounded-2xl"
-              />
-            </div>
           </div>
         </ProfileModal>
 
@@ -421,8 +372,8 @@ export default function StudentProfilePage() {
         <ProfileModal
           isOpen={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
-          title="Change Account Password"
-          description="Ensure your security with a strong password"
+          title="Change Password"
+          description="Ensure account security with a robust password"
           onSave={handlePasswordChange}
           saveText="Update Password"
         >
