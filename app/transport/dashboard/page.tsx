@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Bus, MapPin, Route, Users, Zap } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatCard, DashboardCard, InfoCard } from "@/components/ui/card";
 import { api, BusVehicle, BusRoute, StudentBusAssignment } from "@/lib/api";
 
 const statusColors: Record<string, string> = {
@@ -43,70 +43,40 @@ export default function TransportDashboardPage() {
         <div className="space-y-6">
           {/* KPI Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="border-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
-                    <Bus className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Fleet</p>
-                    <p className="text-3xl font-bold">{buses.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg">
-                    <Zap className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active / In Transit</p>
-                    <p className="text-3xl font-bold">{activeBuses.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-violet-500/10 to-violet-600/5">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg">
-                    <Route className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Routes</p>
-                    <p className="text-3xl font-bold">{routes.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-amber-500/10 to-amber-600/5">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-600 text-white shadow-lg">
-                    <Users className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Assigned Students</p>
-                    <p className="text-3xl font-bold">{assignments.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Total Fleet"
+              value={buses.length}
+              icon={Bus}
+              variant="indigo"
+            />
+            <StatCard
+              title="Active / In Transit"
+              value={activeBuses.length}
+              icon={Zap}
+              variant="emerald"
+            />
+            <StatCard
+              title="Active Routes"
+              value={routes.length}
+              icon={Route}
+              variant="violet"
+            />
+            <StatCard
+              title="Assigned Students"
+              value={assignments.length}
+              icon={Users}
+              variant="amber"
+            />
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
             {/* Fleet Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bus className="h-5 w-5 text-blue-600" /> Fleet Status
-                </CardTitle>
-                <CardDescription>Real-time bus fleet overview</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Fleet Status"
+              description="Real-time bus fleet overview"
+              icon={Bus}
+            >
+              <div>
                 {busesQuery.isLoading ? (
                   <p className="text-sm text-muted-foreground">Loading fleet...</p>
                 ) : buses.length === 0 ? (
@@ -133,18 +103,16 @@ export default function TransportDashboardPage() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
 
             {/* Routes Overview */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-violet-600" /> Routes Overview
-                </CardTitle>
-                <CardDescription>Active transport routes and stops</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Routes Overview"
+              description="Active transport routes and stops"
+              icon={MapPin}
+            >
+              <div>
                 {routesQuery.isLoading ? (
                   <p className="text-sm text-muted-foreground">Loading routes...</p>
                 ) : routes.length === 0 ? (
@@ -180,20 +148,17 @@ export default function TransportDashboardPage() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
           </div>
 
           {/* Maintenance Alert */}
           {inMaintenanceBuses.length > 0 && (
-            <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
-              <CardContent className="pt-6">
-                <p className="font-medium text-orange-700 dark:text-orange-300">
-                  ⚠️ {inMaintenanceBuses.length} bus{inMaintenanceBuses.length > 1 ? "es are" : " is"} under maintenance:
-                  {" "}{inMaintenanceBuses.map(b => b.bus_number).join(", ")}
-                </p>
-              </CardContent>
-            </Card>
+            <InfoCard
+              title="Maintenance Alert"
+              description={`${inMaintenanceBuses.length} bus${inMaintenanceBuses.length > 1 ? "es are" : " is"} under maintenance: ${inMaintenanceBuses.map(b => b.bus_number).join(", ")}`}
+              type="warning"
+            />
           )}
         </div>
       </DashboardShell>

@@ -21,7 +21,7 @@ import Link from "next/link";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatCard, DashboardCard } from "@/components/ui/card";
 import { api, Attendance, Notification, Student } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth";
@@ -136,95 +136,47 @@ export default function ParentDashboard() {
 
           {/* ── KPI Cards Grid ── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="relative overflow-hidden border-border/60 bg-card/60 backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Linked Children</p>
-                    <h3 className="text-3xl font-extrabold mt-1">{myChildren.length}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <GraduationCap className="h-3 w-3 text-indigo-500" /> Enrolled students
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                    <GraduationCap className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="relative overflow-hidden border-border/60 bg-card/60 backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Avg. Attendance</p>
-                    <h3 className="text-3xl font-extrabold mt-1">{avgAttendance}%</h3>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1 font-medium">
-                      <CheckCircle2 className="h-3 w-3" /> Combined rate
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                    <CheckCircle2 className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="relative overflow-hidden border-border/60 bg-card/60 backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Sessions</p>
-                    <h3 className="text-3xl font-extrabold mt-1">
-                      {childrenStats.reduce((sum, child) => sum + child.totalSessions, 0)}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-amber-500" /> Recorded classes
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
-                    <Calendar className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="relative overflow-hidden border-border/60 bg-card/60 backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Unread Notices</p>
-                    <h3 className="text-3xl font-extrabold mt-1">{unreadNotifications.length}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Bell className="h-3 w-3 text-rose-500" /> Notifications
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
-                    <Bell className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Linked Children"
+              value={myChildren.length}
+              icon={GraduationCap}
+              variant="indigo"
+              subtitle="Enrolled students"
+            />
+            <StatCard
+              title="Avg. Attendance"
+              value={`${avgAttendance}%`}
+              icon={CheckCircle2}
+              variant="emerald"
+              subtitle="Combined rate"
+            />
+            <StatCard
+              title="Total Sessions"
+              value={childrenStats.reduce((sum, child) => sum + child.totalSessions, 0)}
+              icon={Calendar}
+              variant="amber"
+              subtitle="Recorded classes"
+            />
+            <StatCard
+              title="Unread Notices"
+              value={unreadNotifications.length}
+              icon={Bell}
+              variant="rose"
+              subtitle="Notifications"
+            />
           </div>
 
           {/* ── Main Content Section: Children Overview & Notifications ── */}
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Children Overview Cards */}
-            <Card className="lg:col-span-2 border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Users className="h-5 w-5 text-indigo-500" /> Children Progress Cards
-                  </CardTitle>
-                  <CardDescription>Academic status & attendance performance</CardDescription>
-                </div>
-                <Link href="/parent/children">
-                  <Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">
-                    View Details <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent>
+            <DashboardCard
+              title="Children Progress Cards"
+              description="Academic status & attendance performance"
+              icon={Users}
+              action={<Link href="/parent/children"><Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">View Details <ChevronRight className="ml-1 h-3.5 w-3.5" /></Button></Link>}
+              className="lg:col-span-2"
+            >
+              <div>
                 {studentsQuery.isLoading && (
                   <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">
                     Loading child profiles...
@@ -271,17 +223,16 @@ export default function ParentDashboard() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </DashboardCard>
 
             {/* Quick Actions & Transport Widget */}
             <div className="space-y-6">
-              <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold">Quick Actions</CardTitle>
-                  <CardDescription>Parent portal navigation</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-3">
+              <DashboardCard
+                title="Quick Actions"
+                description="Parent portal navigation"
+                contentClassName="grid grid-cols-2 gap-3"
+              >
                   <Link href="/parent/exam-results" className="w-full">
                     <Button variant="outline" className="w-full justify-start h-12 rounded-xl hover:bg-indigo-500/10 hover:text-indigo-600 transition-all">
                       <Award className="mr-2 h-4 w-4 text-indigo-500" />
@@ -306,8 +257,7 @@ export default function ParentDashboard() {
                       <span className="text-xs font-semibold">Bus Tracking</span>
                     </Button>
                   </Link>
-                </CardContent>
-              </Card>
+              </DashboardCard>
 
               {/* Bus Live Tracking Banner */}
               <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent p-5 border border-amber-500/30">
@@ -333,22 +283,13 @@ export default function ParentDashboard() {
           </div>
 
           {/* ── Lower Section: Notifications ── */}
-          <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-rose-500" /> Official Notices & Announcements
-                </CardTitle>
-                <CardDescription>Important notifications from the college administration</CardDescription>
-              </div>
-              <Link href="/parent/notifications">
-                <Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">
-                  View All Notices <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+          <DashboardCard
+            title="Official Notices & Announcements"
+            description="Important notifications from the college administration"
+            icon={Bell}
+            action={<Link href="/parent/notifications"><Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">View All Notices <ChevronRight className="ml-1 h-3.5 w-3.5" /></Button></Link>}
+          >
+            <div className="space-y-3">
                 {notificationsQuery.isLoading && (
                   <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">
                     Loading notifications...
@@ -384,8 +325,7 @@ export default function ParentDashboard() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </DashboardCard>
         </div>
       </DashboardShell>
     </AuthGuard>

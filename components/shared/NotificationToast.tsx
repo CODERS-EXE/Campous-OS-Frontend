@@ -3,33 +3,7 @@
 import { useRouter } from "next/navigation";
 import { X, ExternalLink } from "lucide-react";
 import type { Notification } from "@/lib/api";
-
-// Type icons map
-const TYPE_ICONS: Record<string, string> = {
-  assignment: "📝",
-  attendance: "✅",
-  results: "📊",
-  fee_reminder: "💰",
-  outpass: "🎫",
-  hostel_room: "🏠",
-  announcement: "📢",
-  broadcast: "📣",
-  placement: "💼",
-  exam_schedule: "📅",
-  timetable: "🕐",
-  leave: "🏖️",
-  event: "🎉",
-  deadline: "⏰",
-  system: "⚙️",
-  general: "📬",
-};
-
-const PRIORITY_STYLES: Record<string, string> = {
-  urgent: "border-l-4 border-red-500 bg-red-50 dark:bg-red-950",
-  high: "border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-950",
-  normal: "border-l-4 border-blue-500 bg-white dark:bg-gray-900",
-  low: "border-l-4 border-gray-300 bg-white dark:bg-gray-900",
-};
+import { getNotificationTypeIcon, getPriorityBadgeStyle } from "./NotificationDropdown";
 
 interface NotificationToastProps {
   notification: Pick<Notification, "id" | "title" | "body" | "type" | "priority" | "action_url">;
@@ -45,8 +19,8 @@ export function NotificationToast({
   visible,
 }: NotificationToastProps) {
   const router = useRouter();
-  const icon = TYPE_ICONS[notification.type] ?? "📬";
-  const priorityStyle = PRIORITY_STYLES[notification.priority] ?? PRIORITY_STYLES.normal;
+  const { icon, color } = getNotificationTypeIcon(notification.type);
+  const priorityBadgeStyle = getPriorityBadgeStyle(notification.priority);
 
   const handleClick = () => {
     if (notification.action_url) {
@@ -58,38 +32,63 @@ export function NotificationToast({
   return (
     <div
       className={`
-        ${visible ? "animate-in slide-in-from-right-full" : "animate-out slide-out-to-right-full"}
-        max-w-sm w-full shadow-lg rounded-lg pointer-events-auto ring-1 ring-black/5
-        transition-all duration-300 ${priorityStyle}
+        ${visible ? "animate-in slide-in-from-right-full fade-in-50" : "animate-out slide-out-to-right-full fade-out-50"}
+        relative max-w-sm w-full overflow-hidden rounded-2xl border border-border/70 bg-card/95 backdrop-blur-xl shadow-2xl pointer-events-auto
+        transition-all duration-300 hover:shadow-3xl text-card-foreground
       `}
       role="alert"
       aria-live="assertive"
     >
+      {/* Priority Top Highlight Bar */}
+      <div
+        className={`h-1 w-full ${
+          notification.priority === "urgent"
+            ? "bg-rose-500"
+            : notification.priority === "high"
+            ? "bg-amber-500"
+            : "bg-gradient-to-r from-indigo-500 to-purple-500"
+        }`}
+      />
+
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <span className="text-2xl flex-shrink-0" aria-hidden>
+          {/* Type Icon Avatar */}
+          <div className={`h-10 w-10 rounded-2xl border flex items-center justify-center shrink-0 shadow-sm ${color}`}>
             {icon}
-          </span>
+          </div>
+
+          {/* Content */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
-              {notification.title}
-            </p>
-            <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-xs font-bold text-foreground line-clamp-1">
+                {notification.title}
+              </h4>
+              {notification.priority !== "normal" && (
+                <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold uppercase border ${priorityBadgeStyle}`}>
+                  {notification.priority}
+                </span>
+              )}
+            </div>
+
+            <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
               {notification.body}
             </p>
+
             {notification.action_url && (
               <button
                 onClick={handleClick}
-                className="mt-1 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
               >
+                <span>View Details</span>
                 <ExternalLink className="h-3 w-3" />
-                View details
               </button>
             )}
           </div>
+
+          {/* Close Button */}
           <button
             onClick={() => onDismiss(toastId)}
-            className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            className="flex-shrink-0 p-1 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
             aria-label="Dismiss notification"
           >
             <X className="h-4 w-4" />

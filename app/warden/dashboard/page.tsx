@@ -250,8 +250,7 @@ export default function WardenDashboard() {
             icon={Bell}
             action={<Link href="/warden/notifications"><Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">View All <ChevronRight className="ml-1 h-3.5 w-3.5" /></Button></Link>}
           >
-            <div>
-              <div className="space-y-3">
+            <div className="space-y-3">
                 {notificationsQuery.isLoading && (
                   <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">
                     Loading notifications...

@@ -1,9 +1,10 @@
 "use client";
 
-import { BellOff, Search, SlidersHorizontal } from "lucide-react";
+import { BellOff, Search, SlidersHorizontal, Trash2, CheckCircle2, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { getNotificationTypeIcon, getPriorityBadgeStyle } from "./NotificationDropdown";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -60,29 +61,41 @@ export function NotificationFilters({
     filters.search || filters.type || filters.priority || filters.unreadOnly;
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <SlidersHorizontal className="h-4 w-4" />
-        <span>Filter Notifications</span>
+    <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-xl p-5 space-y-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-extrabold text-foreground">
+          <SlidersHorizontal className="h-4 w-4 text-primary" />
+          <span>Filter Notifications</span>
+        </div>
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onReset}
+            className="text-xs font-semibold text-primary hover:bg-primary/10 rounded-xl"
+          >
+            Reset Filters
+          </Button>
+        )}
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search notifications..."
+          placeholder="Search notification title or content..."
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
-          className="pl-9"
+          className="pl-10 h-10 rounded-2xl border-border/60 bg-background/60 text-sm focus-visible:ring-2 focus-visible:ring-primary/40"
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Type filter */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Type Filter */}
         <select
           value={filters.type}
           onChange={(e) => onChange({ ...filters, type: e.target.value })}
-          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="flex h-10 w-full items-center justify-between rounded-2xl border border-border/60 bg-background/60 px-3.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {NOTIFICATION_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -91,11 +104,11 @@ export function NotificationFilters({
           ))}
         </select>
 
-        {/* Priority filter */}
+        {/* Priority Filter */}
         <select
           value={filters.priority}
           onChange={(e) => onChange({ ...filters, priority: e.target.value })}
-          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="flex h-10 w-full items-center justify-between rounded-2xl border border-border/60 bg-background/60 px-3.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {PRIORITIES.map((p) => (
             <option key={p.value} value={p.value}>
@@ -103,27 +116,21 @@ export function NotificationFilters({
             </option>
           ))}
         </select>
-      </div>
 
-      <div className="flex items-center justify-between">
-        {/* Unread toggle */}
-        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={filters.unreadOnly}
-            onChange={(e) =>
-              onChange({ ...filters, unreadOnly: e.target.checked })
-            }
-            className="rounded border-input"
-          />
-          <span>Unread only</span>
-        </label>
-
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={onReset} className="text-xs">
-            Clear filters
-          </Button>
-        )}
+        {/* Unread Toggle */}
+        <div className="flex items-center sm:col-span-2 lg:col-span-1">
+          <label className="inline-flex items-center gap-2.5 text-xs font-semibold text-foreground cursor-pointer select-none rounded-2xl border border-border/60 bg-background/60 px-4 h-10 w-full hover:bg-muted/50 transition-colors">
+            <input
+              type="checkbox"
+              checked={filters.unreadOnly}
+              onChange={(e) =>
+                onChange({ ...filters, unreadOnly: e.target.checked })
+              }
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <span>Unread Only</span>
+          </label>
+        </div>
       </div>
     </div>
   );
@@ -143,26 +150,26 @@ export function NotificationEmptyState({
   onClearFilters,
 }: NotificationEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="rounded-full bg-muted p-6 mb-4">
-        <BellOff className="h-10 w-10 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-3xl border border-dashed border-border/60 bg-card/40 backdrop-blur-md">
+      <div className="rounded-2xl bg-primary/10 p-5 mb-4 text-primary">
+        <BellOff className="h-10 w-10 stroke-[1.5]" />
       </div>
-      <h3 className="text-lg font-semibold mb-1">
+      <h3 className="text-lg font-bold tracking-tight mb-1">
         {hasFilters ? "No matching notifications" : "All caught up!"}
       </h3>
-      <p className="text-sm text-muted-foreground max-w-xs">
+      <p className="text-xs text-muted-foreground max-w-sm leading-relaxed mb-4">
         {hasFilters
-          ? "No notifications match your current filters. Try adjusting or clearing them."
-          : "You have no notifications right now. New ones will appear here."}
+          ? "No notifications match your current filter criteria. Try adjusting your search query or reset filters."
+          : "You have no notifications right now. New campus announcements, assignments, and alerts will appear here."}
       </p>
       {hasFilters && onClearFilters && (
         <Button
           variant="outline"
           size="sm"
-          className="mt-4"
+          className="rounded-xl font-semibold shadow-sm"
           onClick={onClearFilters}
         >
-          Clear filters
+          Clear Active Filters
         </Button>
       )}
     </div>
@@ -183,16 +190,16 @@ export function NotificationSkeleton({ count = 5 }: NotificationSkeletonProps) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="flex items-start gap-3 rounded-xl border p-4"
+          className="flex items-start gap-4 rounded-3xl border border-border/60 bg-card/60 p-5"
         >
-          <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
-          <div className="flex-1 space-y-2">
+          <Skeleton className="h-10 w-10 rounded-2xl flex-shrink-0" />
+          <div className="flex-1 space-y-2.5">
             <div className="flex items-center justify-between gap-4">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-4 w-44 rounded-lg" />
+              <Skeleton className="h-3 w-20 rounded-full" />
             </div>
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="h-3 w-full rounded-lg" />
+            <Skeleton className="h-3 w-2/3 rounded-lg" />
           </div>
         </div>
       ))}
@@ -201,34 +208,8 @@ export function NotificationSkeleton({ count = 5 }: NotificationSkeletonProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NotificationItem – reusable notification list item
+// NotificationItem
 // ─────────────────────────────────────────────────────────────────────────────
-
-const TYPE_ICONS: Record<string, string> = {
-  assignment: "📝",
-  attendance: "✅",
-  results: "📊",
-  fee_reminder: "💰",
-  outpass: "🎫",
-  hostel_room: "🏠",
-  announcement: "📢",
-  broadcast: "📣",
-  placement: "💼",
-  exam_schedule: "📅",
-  timetable: "🕐",
-  leave: "🏖️",
-  event: "🎉",
-  deadline: "⏰",
-  system: "⚙️",
-  general: "📬",
-};
-
-const PRIORITY_BADGE: Record<string, string> = {
-  urgent: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
-  normal: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-};
 
 interface NotificationItemProps {
   notification: {
@@ -254,64 +235,83 @@ export function NotificationItem({
   showDeleteButton = false,
   formatDate,
 }: NotificationItemProps) {
-  const icon = TYPE_ICONS[notification.type] ?? "📬";
-  const badge = PRIORITY_BADGE[notification.priority] ?? PRIORITY_BADGE.normal;
+  const { icon, color } = getNotificationTypeIcon(notification.type);
+  const priorityBadgeStyle = getPriorityBadgeStyle(notification.priority);
 
   return (
     <div
-      className={`rounded-xl border p-4 transition-colors ${
+      className={`group relative overflow-hidden rounded-3xl border transition-all duration-300 p-5 shadow-sm hover:shadow-md ${
         !notification.is_read
-          ? "bg-blue-50/60 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800"
-          : "bg-card border-border"
+          ? "bg-primary/5 border-primary/30 dark:bg-primary/10 shadow-sm"
+          : "bg-card/70 border-border/60 hover:bg-card/90"
       }`}
     >
-      <div className="flex items-start gap-3">
-        <span className="text-2xl flex-shrink-0 mt-0.5">{icon}</span>
+      {/* Unread Accent Line */}
+      {!notification.is_read && (
+        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary rounded-r-full" />
+      )}
+
+      <div className="flex items-start gap-4">
+        {/* Type Icon Badge */}
+        <div className={`h-11 w-11 rounded-2xl border flex items-center justify-center shrink-0 shadow-sm ${color}`}>
+          {icon}
+        </div>
+
+        {/* Details */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 flex-wrap">
-            <p className="font-semibold text-sm">{notification.title}</p>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <h4 className="font-extrabold text-sm text-foreground group-hover:text-primary transition-colors">
+              {notification.title}
+            </h4>
             {!notification.is_read && (
-              <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                UNREAD
+              </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
+
+          <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
             {notification.body}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-medium text-muted-foreground">
               {formatDate(notification.created_at)}
             </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase ${badge}`}
-            >
+            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase border ${priorityBadgeStyle}`}>
               {notification.priority}
             </span>
-            <span className="text-xs text-muted-foreground capitalize">
+            <span className="rounded-full bg-muted/60 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground capitalize">
               {notification.type.replace(/_/g, " ")}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 flex gap-2 justify-end">
+      {/* Action Buttons Row */}
+      <div className="mt-4 flex items-center justify-end gap-2 border-t border-border/40 pt-3">
         {!notification.is_read && onMarkRead && (
           <Button
             variant="outline"
             size="sm"
             onClick={() => onMarkRead(notification.id)}
-            className="text-xs"
+            className="h-8 text-xs font-semibold rounded-xl hover:bg-primary/10 hover:text-primary"
           >
-            Mark read
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-500" />
+            Mark Read
           </Button>
         )}
         {notification.action_url && (
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             asChild
-            className="text-xs"
+            className="h-8 text-xs font-semibold rounded-xl"
           >
-            <a href={notification.action_url}>View</a>
+            <a href={notification.action_url} className="inline-flex items-center gap-1">
+              View Details <ExternalLink className="h-3 w-3" />
+            </a>
           </Button>
         )}
         {showDeleteButton && onDelete && (
@@ -319,9 +319,10 @@ export function NotificationItem({
             variant="ghost"
             size="sm"
             onClick={() => onDelete(notification.id)}
-            className="text-xs text-destructive hover:text-destructive"
+            className="h-8 text-xs font-semibold rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            Delete
+            <Trash2 className="h-3.5 w-3.5 mr-1" />
+            Remove
           </Button>
         )}
       </div>

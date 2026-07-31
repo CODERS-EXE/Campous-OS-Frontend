@@ -180,8 +180,7 @@ export default function StudentDashboard() {
               action={<Link href="/student/assignments"><Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">View All <ChevronRight className="ml-1 h-3.5 w-3.5" /></Button></Link>}
               className="lg:col-span-2"
             >
-              <div>
-                <div className="space-y-3">
+              <div className="space-y-3">
                   {assignmentsQuery.isLoading && (
                     <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">
                       Loading assignments...
@@ -230,8 +229,7 @@ export default function StudentDashboard() {
               icon={Award}
               action={<Link href="/student/results"><Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">View All <ChevronRight className="ml-1 h-3.5 w-3.5" /></Button></Link>}
             >
-              <div>
-                <div className="space-y-3">
+              <div className="space-y-3">
                   {resultsQuery.isLoading && (
                     <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">
                       Loading results...
@@ -275,8 +273,7 @@ export default function StudentDashboard() {
               action={<Link href="/student/notifications"><Button variant="ghost" size="sm" className="text-xs font-semibold text-primary">View All <ChevronRight className="ml-1 h-3.5 w-3.5" /></Button></Link>}
               className="lg:col-span-2"
             >
-              <div>
-                <div className="space-y-3">
+              <div className="space-y-3">
                   {notificationsQuery.isLoading && (
                     <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">
                       Loading announcements...
