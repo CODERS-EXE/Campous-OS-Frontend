@@ -50,21 +50,10 @@ export default function StudentDashboard() {
 
   const submissionsQuery = useQuery<Submission[]>({
     queryKey: ["submissions", "my"],
-    queryFn: async () => {
-      const assignments = assignmentsQuery.data || [];
-      const allSubmissions: Submission[] = [];
-      for (const assignment of assignments) {
-        try {
-          const subs = await api.get<Submission[]>(`/api/v1/assignments/${assignment.id}/submissions`);
-          allSubmissions.push(...subs.filter((s) => s.student_id === user?.id));
-        } catch {
-          // Ignore
-        }
-      }
-      return allSubmissions;
-    },
-    enabled: !!user && !!assignmentsQuery.data,
+    queryFn: () => api.get<Submission[]>("/api/v1/assignments/my-submissions"),
+    enabled: !!user,
   });
+
 
   const publishedAssignments = useMemo(
     () => assignmentsQuery.data?.filter((a) => a.published) ?? [],
