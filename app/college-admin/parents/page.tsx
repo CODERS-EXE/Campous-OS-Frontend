@@ -49,7 +49,7 @@ export default function ParentsPage() {
   const studentLookup = useMemo(
     () =>
       students.reduce<Record<string, Student>>((acc, student) => {
-        acc[student.id] = student;
+        acc[student.user_id] = student;
         return acc;
       }, {}),
     [students]
@@ -290,7 +290,7 @@ export default function ParentsPage() {
                       }
                     >
                       {students.map((student) => (
-                        <option key={student.id} value={student.id}>
+                        <option key={student.user_id} value={student.user_id}>
                           {student.name} ({student.roll_no})
                         </option>
                       ))}

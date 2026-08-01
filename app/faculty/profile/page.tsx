@@ -66,12 +66,32 @@ export default function FacultyProfilePage() {
     toast.success(`${label} copied to clipboard!`);
   };
 
-  const handleEditSave = () => {
-    toast.success("Profile updated successfully!");
-    setShowEditModal(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEditSave = async () => {
+    if (!editForm.name?.trim()) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await api.patch<{ name: string; email: string; role: string; id: string; college_id: string | null; profile: Record<string, unknown>; is_verified: boolean }>(
+        "/api/v1/auth/me",
+        { name: editForm.name.trim() }
+      );
+      useAuthStore.setState((state) => ({
+        user: state.user ? { ...state.user, name: editForm.name.trim() } : state.user,
+      }));
+      toast.success("Profile updated successfully!");
+      setShowEditModal(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!passwordForm.currentPassword) {
       toast.error("Please enter your current password.");
       return;
@@ -84,9 +104,20 @@ export default function FacultyProfilePage() {
       toast.error("New passwords do not match!");
       return;
     }
-    toast.success("Password changed successfully!");
-    setShowPasswordModal(false);
-    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setIsSaving(true);
+    try {
+      await api.post<{ ok: boolean; message: string }>("/api/v1/auth/change-password", {
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+      });
+      toast.success("Password changed successfully!");
+      setShowPasswordModal(false);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const initials =
@@ -347,6 +378,7 @@ export default function FacultyProfilePage() {
           description="Update your faculty profile details"
           onSave={handleEditSave}
           saveText="Save Changes"
+          isSubmitting={isSaving}
         >
           <div className="space-y-4">
             <div>
@@ -376,6 +408,7 @@ export default function FacultyProfilePage() {
           description="Ensure account security with a robust password"
           onSave={handlePasswordChange}
           saveText="Update Password"
+          isSubmitting={isSaving}
         >
           <div className="space-y-4">
             <div>

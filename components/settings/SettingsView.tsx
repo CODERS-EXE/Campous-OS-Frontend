@@ -160,7 +160,7 @@ export function SettingsView({ allowedRoles, roleTitle = "User Settings" }: Sett
   // Mutations
   const updateProfileMutation = useMutation({
     mutationFn: (data: { name?: string; email?: string }) =>
-      api.patch("/api/v1/users/me", data),
+      api.patch("/api/v1/auth/me", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user"] });
       toast.success("Profile updated successfully!");
@@ -171,7 +171,8 @@ export function SettingsView({ allowedRoles, roleTitle = "User Settings" }: Sett
   });
 
   const changePasswordMutation = useMutation({
-    mutationFn: (data: { password: string }) => api.patch("/api/v1/users/me", data),
+    mutationFn: (data: { current_password: string; new_password: string }) => 
+      api.post("/api/v1/auth/change-password", data),
     onSuccess: () => {
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       toast.success("Password changed successfully!");
@@ -197,6 +198,10 @@ export function SettingsView({ allowedRoles, roleTitle = "User Settings" }: Sett
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!passwordForm.currentPassword) {
+      toast.error("Please enter your current password.");
+      return;
+    }
     if (!passwordForm.newPassword || passwordForm.newPassword.length < 8) {
       toast.error("Password must be at least 8 characters long.");
       return;
@@ -206,7 +211,10 @@ export function SettingsView({ allowedRoles, roleTitle = "User Settings" }: Sett
       return;
     }
 
-    changePasswordMutation.mutate({ password: passwordForm.newPassword });
+    changePasswordMutation.mutate({ 
+      current_password: passwordForm.currentPassword,
+      new_password: passwordForm.newPassword 
+    });
   };
 
   const revokeSession = (id: string) => {
@@ -347,6 +355,14 @@ export function SettingsView({ allowedRoles, roleTitle = "User Settings" }: Sett
                     <CardContent>
                       <form onSubmit={handleChangePassword} className="space-y-5">
                         <div className="space-y-4 max-w-md">
+                          <PasswordField
+                            id="currentPassword"
+                            label="Current Password"
+                            value={passwordForm.currentPassword}
+                            onChange={(val) => setPasswordForm({ ...passwordForm, currentPassword: val })}
+                            placeholder="Enter your current password"
+                          />
+
                           <PasswordField
                             id="newPassword"
                             label="New Password"

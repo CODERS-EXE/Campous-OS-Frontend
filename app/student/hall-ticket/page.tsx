@@ -6,24 +6,18 @@ import { Button } from "@/components/ui/button";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HallTicket } from "@/lib/api";
+import { api, HallTicket } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 import { Download, Calendar, Clock, MapPin } from "lucide-react";
 
 export default function StudentHallTicketPage() {
-  // In production, get student_id from auth context
-  const studentId = "current-student-id";
-  // In production, allow exam selection
-  const examId = "current-exam-id";
+  const { user } = useAuthStore();
+  const studentId = user?.id || "";
 
   const { data: hallTicket, isLoading } = useQuery<HallTicket>({
-    queryKey: ["hall-ticket", studentId, examId],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/exams/students/${studentId}/hall-ticket/${examId}`
-      );
-      if (!res.ok) throw new Error("Hall ticket not generated yet");
-      return res.json();
-    },
+    queryKey: ["hall-ticket", studentId],
+    queryFn: () => api.getStudentHallTicket(studentId),
+    enabled: !!studentId,
   });
 
   return (
@@ -38,7 +32,7 @@ export default function StudentHallTicketPage() {
               </p>
             </div>
             {hallTicket && (
-              <Button>
+              <Button onClick={() => window.print()}>
                 <Download className="mr-2 h-4 w-4" />
                 Download PDF
               </Button>

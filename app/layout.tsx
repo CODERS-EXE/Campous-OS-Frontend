@@ -33,7 +33,6 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
-  manifest: '/site.webmanifest',
 };
 
 export const viewport: Viewport = {

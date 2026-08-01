@@ -5,17 +5,14 @@ import { Card } from "@/components/ui/card";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExamAnalytics } from "@/lib/api";
+import { api, ExamAnalytics } from "@/lib/api";
 
 export default function SuperAdminExamAnalyticsPage() {
   const { data: analytics, isLoading } = useQuery<ExamAnalytics>({
     queryKey: ["exam-analytics"],
-    queryFn: async () => {
-      const res = await fetch("/api/v1/exams/analytics/college-stats");
-      if (!res.ok) throw new Error("Failed to fetch analytics");
-      return res.json();
-    },
+    queryFn: () => api.getExamAnalytics(),
   });
+
 
   return (
     <AuthGuard allowedRoles={["super_admin"]}>

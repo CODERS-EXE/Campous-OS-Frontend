@@ -5,20 +5,19 @@ import { Card } from "@/components/ui/card";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExamResult } from "@/lib/api";
+import { api, ExamResult } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export default function ParentExamResultsPage() {
-  // In production, get child/student_id from parent's linked students
-  const studentId = "child-student-id";
+  const { user } = useAuthStore();
+  const studentIds = (user?.profile as { student_ids?: string[] })?.student_ids || [];
+  const studentId = studentIds[0] || user?.id || "";
 
   const { data: results, isLoading } = useQuery<ExamResult[]>({
     queryKey: ["child-results", studentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/exams/students/${studentId}/all-results`);
-      if (!res.ok) throw new Error("Failed to fetch results");
-      return res.json();
-    },
+    queryFn: () => api.getStudentAllResults(studentId),
+    enabled: !!studentId,
   });
 
   const getTrendIcon = (current: number, previous: number) => {

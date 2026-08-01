@@ -14,14 +14,9 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 export default function StudentTimetablePage() {
   const { user } = useAuthStore();
 
-  // Students see all timetable entries in their college (faculty-created)
   const timetableQuery = useQuery<TimetableEntry[]>({
-    queryKey: ["timetable", "all"],
-    queryFn: async () => {
-      // Since there's no student-specific timetable endpoint, we'll show a placeholder
-      // In a real implementation, you'd fetch all timetable entries for the student's department/year
-      return [];
-    },
+    queryKey: ["timetable", "student"],
+    queryFn: () => api.get<TimetableEntry[]>("/api/v1/timetable/student"),
     enabled: !!user,
   });
 

@@ -6,20 +6,18 @@ import { Button } from "@/components/ui/button";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExamResult } from "@/lib/api";
+import { api, ExamResult } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 import { Download, TrendingUp, Award } from "lucide-react";
 
 export default function StudentExamResultsPage() {
-  // In production, get student_id from auth context
-  const studentId = "current-student-id";
+  const { user } = useAuthStore();
+  const studentId = user?.id || "";
 
   const { data: results, isLoading } = useQuery<ExamResult[]>({
     queryKey: ["student-results", studentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/exams/students/${studentId}/all-results`);
-      if (!res.ok) throw new Error("Failed to fetch results");
-      return res.json();
-    },
+    queryFn: () => api.getStudentAllResults(studentId),
+    enabled: !!studentId,
   });
 
   return (
@@ -33,7 +31,7 @@ export default function StudentExamResultsPage() {
                 View your semester results and academic performance
               </p>
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => window.print()}>
               <Download className="mr-2 h-4 w-4" />
               Download Marksheet
             </Button>

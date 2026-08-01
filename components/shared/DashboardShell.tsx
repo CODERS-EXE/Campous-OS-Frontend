@@ -38,6 +38,7 @@ import { cn, getRoleDashboardPath } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth";
 import { NotificationBadge } from "@/components/shared/NotificationBadge";
 import { AiAssistant } from "@/components/shared/AiAssistant";
+import { GlobalSearch } from "@/components/shared/GlobalSearch";
 
 const NAV_ITEMS: Record<string, { href: string; label: string; icon: React.ElementType }[]> = {
   super_admin: [
@@ -318,19 +319,8 @@ export function DashboardShell({
             </div>
 
             {/* Middle: Global Search (Hidden on small) */}
-            <div className="hidden lg:flex max-w-md w-full relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              </div>
-              <Input 
-                placeholder="Search anything..." 
-                className="pl-10 bg-muted/50 border-transparent focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-primary rounded-full transition-all"
-              />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </div>
+            <div className="hidden lg:flex max-w-md w-full">
+              <GlobalSearch />
             </div>
 
             {/* Right: Notifications & Profile */}

@@ -575,6 +575,10 @@ export default function CollegeAdminFeesPage() {
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
+                        if (!assignForm.fee_structure_id) {
+                          toast.error("Please select a Fee Structure before assigning.");
+                          return;
+                        }
                         assignFeeMutation.mutate({
                           fee_structure_id: assignForm.fee_structure_id,
                           due_date: assignForm.due_date,

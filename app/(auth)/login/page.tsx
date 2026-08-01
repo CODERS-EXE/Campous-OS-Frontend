@@ -218,9 +218,10 @@ function Field({
 // ─── Demo credentials quick-fill ─────────────────────────────────────────────
 
 const DEMO_ACCOUNTS = [
-  { label: "Super Admin",  email: "admin@campusos.com", password: "Admin@123",  subdomain: ""     },
-  { label: "Student",      email: "alice@demo.edu",     password: "Demo@123",   subdomain: "demo" },
-  { label: "Faculty",      email: "bob@demo.edu",       password: "Demo@123",   subdomain: "demo" },
+  { label: "Super Admin",   email: "admin@campusos.com",    password: "Admin@123",   subdomain: ""    },
+  { label: "College Admin", email: "nilesh@example.com",    password: "",            subdomain: "gph" },
+  { label: "Student",       email: "gayatri@example.com",   password: "",            subdomain: "gph" },
+  { label: "Faculty",       email: "priya@example.com",     password: "",            subdomain: "gph" },
 ];
 
 interface DemoFillProps {
@@ -290,7 +291,7 @@ function LoginForm() {
   // ── Form state ──
   const [email,     setEmail]     = useState("");
   const [password,  setPassword]  = useState("");
-  const [subdomain, setSubdomain] = useState("demo");
+  const [subdomain, setSubdomain] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPwd,   setShowPwd]   = useState(false);
   const [error,     setError]     = useState("");
@@ -299,6 +300,7 @@ function LoginForm() {
 
   // ── Track how many times the user has shaken the form (wrong password) ──
   const [shake, setShake] = useState(0);
+  const [showForgot, setShowForgot] = useState(false);
 
   // ── Pre-fill from ?demo=true ──
   useEffect(() => {
@@ -447,11 +449,46 @@ function LoginForm() {
                 </label>
                 <Link
                   href="#"
+                  onClick={(e) => { e.preventDefault(); setShowForgot(true); }}
                   className="text-sm font-medium text-primary hover:underline underline-offset-4 transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
+
+              {/* Forgot password modal */}
+              <AnimatePresence>
+                {showForgot && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+                    onClick={() => setShowForgot(false)}
+                  >
+                    <div
+                      className="w-full max-w-sm rounded-2xl border-2 bg-card p-6 shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <h3 className="font-heading text-lg font-bold mb-2">Password Reset</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                        To reset your password, please contact your{" "}
+                        <span className="font-semibold text-foreground">College Admin</span>.
+                        <br /><br />
+                        If you are a College Admin, please contact the{" "}
+                        <span className="font-semibold text-foreground">Super Admin</span>.
+                      </p>
+                      <button
+                        onClick={() => setShowForgot(false)}
+                        className="w-full rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-white"
+                      >
+                        Got it
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Error banner */}
               <AnimatePresence mode="wait">
@@ -518,6 +555,12 @@ function LoginForm() {
             <Link href="#" className="font-medium text-primary hover:underline underline-offset-4">Terms of Service</Link>
             {" "}and{" "}
             <Link href="#" className="font-medium text-primary hover:underline underline-offset-4">Privacy Policy</Link>
+          </p>
+          <p className="mt-3 text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="font-semibold text-primary hover:underline underline-offset-4">
+              Register
+            </Link>
           </p>
         </motion.div>
       </div>

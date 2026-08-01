@@ -1,23 +1,23 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SubjectExam } from "@/lib/api";
-import { Calendar, Clock, Users } from "lucide-react";
+import { api, SubjectExam } from "@/lib/api";
+import { Calendar, Clock, Users, ClipboardList, BookOpen } from "lucide-react";
 
 export default function FacultyExamsPage() {
+  const router = useRouter();
+
   const { data: assignedExams, isLoading } = useQuery<SubjectExam[]>({
     queryKey: ["faculty-assigned-exams"],
-    queryFn: async () => {
-      const res = await fetch("/api/v1/exams/faculty/assigned-exams");
-      if (!res.ok) throw new Error("Failed to fetch assigned exams");
-      return res.json();
-    },
+    queryFn: () => api.getAssignedExams(),
   });
+
 
   return (
     <AuthGuard allowedRoles={["faculty"]}>
@@ -94,10 +94,22 @@ export default function FacultyExamsPage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => router.push(`/faculty/attendance?subject=${encodeURIComponent(exam.subject_name)}`)}
+                        >
+                          <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
                           Mark Attendance
                         </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => router.push(`/faculty/marks-entry?examId=${exam.id}`)}
+                        >
+                          <BookOpen className="mr-1.5 h-3.5 w-3.5" />
                           Enter Marks
                         </Button>
                       </div>

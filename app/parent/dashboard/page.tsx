@@ -30,8 +30,8 @@ export default function ParentDashboard() {
   const { user } = useAuthStore();
 
   const studentsQuery = useQuery<Student[]>({
-    queryKey: ["students", "all"],
-    queryFn: () => api.get<Student[]>("/api/v1/users/students"),
+    queryKey: ["my-children"],
+    queryFn: () => api.get<Student[]>("/api/v1/users/my-children"),
     enabled: !!user,
   });
 
@@ -42,16 +42,14 @@ export default function ParentDashboard() {
   });
 
   const attendanceQuery = useQuery<Attendance[]>({
-    queryKey: ["attendance", "all"],
-    queryFn: () => api.get<Attendance[]>("/api/v1/attendance/mine"),
+    queryKey: ["attendance", "student"],
+    queryFn: () => api.get<Attendance[]>("/api/v1/attendance/student"),
     enabled: !!user,
   });
 
   const myChildren = useMemo(() => {
-    if (!user?.profile?.student_ids || !studentsQuery.data) return [];
-    const childIds = user.profile.student_ids as string[];
-    return studentsQuery.data.filter((student) => childIds.includes(student.user_id));
-  }, [user, studentsQuery.data]);
+    return studentsQuery.data ?? [];
+  }, [studentsQuery.data]);
 
   const unreadNotifications = useMemo(
     () => notificationsQuery.data?.filter((n) => !n.is_read) ?? [],

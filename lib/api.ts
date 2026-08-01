@@ -318,9 +318,209 @@ export class ApiClient {
   getLibraryAnalytics() {
     return this.get<LibraryAnalytics>("/api/v1/library/analytics");
   }
+
+  // Exam Management API helpers
+  getExams(params?: { status?: string; academic_year?: string; semester?: number }) {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.academic_year) q.set("academic_year", params.academic_year);
+    if (params?.semester) q.set("semester", String(params.semester));
+    const url = `/api/v1/exams/${q.toString() ? `?${q.toString()}` : ""}`;
+    return this.get<Exam[]>(url);
+  }
+
+  getExam(examId: string) {
+    return this.get<Exam>(`/api/v1/exams/${examId}`);
+  }
+
+  createExam(body: {
+    name: string;
+    exam_type: string;
+    academic_year: string;
+    semester: number;
+    start_date: string;
+    end_date: string;
+    description?: string;
+  }) {
+    return this.post<{ id: string; message: string }>("/api/v1/exams/", body);
+  }
+
+  updateExam(examId: string, body: unknown) {
+    return this.patch<{ message: string }>(`/api/v1/exams/${examId}`, body);
+  }
+
+  deleteExam(examId: string) {
+    return this.delete<{ message: string }>(`/api/v1/exams/${examId}`);
+  }
+
+  getSubjectExams(examId: string) {
+    return this.get<SubjectExam[]>(`/api/v1/exams/${examId}/subjects`);
+  }
+
+  scheduleSubjectExam(examId: string, body: unknown) {
+    return this.post<{ id: string; message: string }>(`/api/v1/exams/${examId}/subjects`, body);
+  }
+
+  updateSubjectExam(subjectExamId: string, body: unknown) {
+    return this.patch<{ message: string }>(`/api/v1/exams/subjects/${subjectExamId}`, body);
+  }
+
+  deleteSubjectExam(subjectExamId: string) {
+    return this.delete<{ message: string; deleted_student_exams: number }>(`/api/v1/exams/subjects/${subjectExamId}`);
+  }
+
+  getAssignedExams() {
+    return this.get<SubjectExam[]>("/api/v1/exams/faculty/assigned-exams");
+  }
+
+  getExamAnalytics() {
+    return this.get<ExamAnalytics>("/api/v1/exams/analytics/college-stats");
+  }
+
+  getSubjectExamStudents(subjectExamId: string) {
+    return this.get<StudentExam[]>(`/api/v1/exams/subjects/${subjectExamId}/students`);
+  }
+
+  enterStudentMarks(studentExamId: string, body: { internal_marks?: number; external_marks?: number; remarks?: string }) {
+    const params = new URLSearchParams();
+    if (body.internal_marks !== undefined) params.set("internal_marks", String(body.internal_marks));
+    if (body.external_marks !== undefined) params.set("external_marks", String(body.external_marks));
+    if (body.remarks) params.set("remarks", body.remarks);
+    return this.patch<{ message: string; total_marks: number }>(`/api/v1/exams/student-exams/${studentExamId}/marks?${params.toString()}`, {});
+  }
+
+  bulkUploadMarks(subjectExamId: string, body: Array<{ student_exam_id: string; internal_marks?: number; external_marks?: number }>) {
+    return this.post<{ message: string; count: number }>(`/api/v1/exams/subjects/${subjectExamId}/bulk-marks`, body);
+  }
+
+  getStudentHallTicket(studentId: string, examId?: string) {
+    const url = examId 
+      ? `/api/v1/exams/students/${studentId}/hall-ticket/${examId}`
+      : `/api/v1/exams/students/${studentId}/hall-ticket/latest`;
+    return this.get<HallTicket>(url);
+  }
+
+  getStudentAllResults(studentId: string) {
+    return this.get<ExamResult[]>(`/api/v1/exams/students/${studentId}/all-results`);
+  }
+
+  calculateExamResults(examId: string) {
+    return this.post<{ message: string; results_created: number; total_students: number }>(
+      `/api/v1/exams/${examId}/calculate-results`,
+      []
+    );
+  }
+
+  publishExamResults(examId: string) {
+    return this.post<{ message: string; count: number }>(
+      `/api/v1/exams/${examId}/publish-results`,
+      {}
+    );
+  }
+
+  exportExamResultsCsv(examId: string) {
+    return this.get<{ filename: string; content: string; rows: number }>(
+      `/api/v1/exams/analytics/export-csv?exam_id=${examId}`
+    );
+  }
+
+  // ============================================================================
+  // LIBRARY MANAGEMENT METHODS
+  // ============================================================================
+
+  // Analytics
+  getLibraryAnalytics() {
+    return this.get<LibraryAnalytics>("/api/v1/library/analytics");
+  }
+
+  // Categories
+  getLibraryCategories() {
+    return this.get<LibraryCategory[]>("/api/v1/library/categories");
+  }
+
+  createLibraryCategory(body: { name: string; description?: string }) {
+    return this.post<{ id: string; message: string }>("/api/v1/library/categories", body);
+  }
+
+  updateLibraryCategory(categoryId: string, body: { name?: string; description?: string }) {
+    return this.patch<{ message: string }>(`/api/v1/library/categories/${categoryId}`, body);
+  }
+
+  deleteLibraryCategory(categoryId: string) {
+    return this.delete<{ message: string }>(`/api/v1/library/categories/${categoryId}`);
+  }
+
+  // Books
+  getLibraryBooks(params?: { search?: string; category_id?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.set("search", params.search);
+    if (params?.category_id) queryParams.set("category_id", params.category_id);
+    const queryString = queryParams.toString();
+    return this.get<LibraryBook[]>(`/api/v1/library/books${queryString ? `?${queryString}` : ""}`);
+  }
+
+  getLibraryBook(bookId: string) {
+    return this.get<LibraryBook>(`/api/v1/library/books/${bookId}`);
+  }
+
+  createLibraryBook(body: {
+    title: string;
+    author: string;
+    isbn?: string;
+    publisher?: string;
+    edition?: string;
+    year?: number;
+    category_id?: string;
+    total_quantity?: number;
+    location?: string;
+    description?: string;
+    cover_url?: string;
+    language?: string;
+  }) {
+    return this.post<{ id: string; message: string }>("/api/v1/library/books", body);
+  }
+
+  updateLibraryBook(bookId: string, body: unknown) {
+    return this.patch<{ message: string }>(`/api/v1/library/books/${bookId}`, body);
+  }
+
+  deleteLibraryBook(bookId: string) {
+    return this.delete<{ message: string }>(`/api/v1/library/books/${bookId}`);
+  }
+
+  // Issues
+  getLibraryIssues() {
+    return this.get<LibraryIssue[]>("/api/v1/library/issues");
+  }
+
+  getMyLibraryIssues() {
+    return this.get<LibraryIssue[]>("/api/v1/library/my-issues");
+  }
+
+  issueLibraryBook(body: { book_id: string; user_id: string; due_days?: number; remarks?: string }) {
+    return this.post<{ id: string; message: string; due_date: string }>("/api/v1/library/issues", body);
+  }
+
+  returnLibraryBook(body: { issue_id: string; remarks?: string; is_lost?: boolean; is_damaged?: boolean }) {
+    return this.post<{ message: string; fine_amount?: number }>("/api/v1/library/return", body);
+  }
+
+  renewLibraryBook(body: { issue_id: string; additional_days?: number }) {
+    return this.post<{ message: string; new_due_date: string }>("/api/v1/library/renew", body);
+  }
+
+  payLibraryFine(issueId: string) {
+    return this.post<{ message: string }>(`/api/v1/library/fines/${issueId}/pay`, {});
+  }
+
+  // Assign students to faculty
+  assignStudentsToFaculty(facultyUserId: string, studentIds: string[]) {
+    return this.patch<{ message: string; count: number }>(`/api/v1/users/faculty/${facultyUserId}/assign-students`, studentIds);
+  }
 }
 
 export const api = new ApiClient();
+
 
 export interface AuthResponse {
   tokens: { access_token: string; refresh_token: string; token_type: string };

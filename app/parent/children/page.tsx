@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { GraduationCap, Mail, Phone, User } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
@@ -14,17 +13,12 @@ export default function ParentChildrenPage() {
   const { user } = useAuthStore();
 
   const studentsQuery = useQuery<Student[]>({
-    queryKey: ["students", "all"],
-    queryFn: () => api.get<Student[]>("/api/v1/users/students"),
+    queryKey: ["my-children"],
+    queryFn: () => api.get<Student[]>("/api/v1/users/my-children"),
     enabled: !!user,
   });
 
-  // Filter to show only children linked to this parent
-  const myChildren = useMemo(() => {
-    if (!user?.profile?.student_ids || !studentsQuery.data) return [];
-    const childIds = user.profile.student_ids as string[];
-    return studentsQuery.data.filter((student) => childIds.includes(student.user_id));
-  }, [user, studentsQuery.data]);
+  const myChildren = studentsQuery.data ?? [];
 
   return (
     <AuthGuard allowedRoles={["parent"]}>

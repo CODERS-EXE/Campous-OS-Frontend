@@ -27,16 +27,12 @@ export default function ParentTimetablePage() {
   }, []);
 
   const studentsQuery = useQuery<Student[]>({
-    queryKey: ["students", "all"],
-    queryFn: () => api.get<Student[]>("/api/v1/users/students"),
+    queryKey: ["my-children"],
+    queryFn: () => api.get<Student[]>("/api/v1/users/my-children"),
     enabled: !!user,
   });
 
-  const myChildren = useMemo(() => {
-    if (!user?.profile?.student_ids || !studentsQuery.data) return [];
-    const childIds = user.profile.student_ids as string[];
-    return studentsQuery.data.filter((student) => childIds.includes(student.user_id));
-  }, [user, studentsQuery.data]);
+  const myChildren = studentsQuery.data ?? [];
 
   useMemo(() => {
     if (!selectedChildId && myChildren.length > 0) {
@@ -50,11 +46,8 @@ export default function ParentTimetablePage() {
   );
 
   const timetableQuery = useQuery<TimetableEntry[]>({
-    queryKey: ["timetable", "all"],
-    queryFn: async () => {
-      // Placeholder - backend doesn't have student-specific timetable endpoint yet
-      return [];
-    },
+    queryKey: ["timetable", "student", selectedChildId],
+    queryFn: () => api.get<TimetableEntry[]>("/api/v1/timetable/student"),
     enabled: !!selectedChildId,
   });
 

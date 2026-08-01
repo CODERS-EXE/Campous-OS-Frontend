@@ -12,7 +12,6 @@ import {
   Star,
   User,
   Activity,
-  Sparkles,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -24,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/lib/store/auth";
+import { api } from "@/lib/api";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileModal } from "@/components/profile/ProfileModal";
 import { ProfileStatCard } from "@/components/profile/ProfileStatCard";
@@ -34,6 +34,7 @@ export default function SuperAdminProfilePage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: user?.name || "",
@@ -52,12 +53,31 @@ export default function SuperAdminProfilePage() {
     toast.success(`${label} copied to clipboard!`);
   };
 
-  const handleEditSave = () => {
-    toast.success("Profile updated successfully!");
-    setShowEditModal(false);
+  const handleEditSave = async () => {
+    if (!editForm.name.trim()) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await api.patch<{ name: string; email: string; role: string; id: string; college_id: string | null; profile: Record<string, unknown>; is_verified: boolean }>(
+        "/api/v1/auth/me",
+        { name: editForm.name.trim() }
+      );
+      // Update the user name in the Zustand store without a full re-login
+      useAuthStore.setState((state) => ({
+        user: state.user ? { ...state.user, name: editForm.name.trim() } : state.user,
+      }));
+      toast.success("Profile updated successfully!");
+      setShowEditModal(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!passwordForm.currentPassword) {
       toast.error("Please enter your current password.");
       return;
@@ -66,13 +86,28 @@ export default function SuperAdminProfilePage() {
       toast.error("Please enter a new password.");
       return;
     }
+    if (passwordForm.newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters.");
+      return;
+    }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error("New passwords do not match!");
       return;
     }
-    toast.success("Password changed successfully!");
-    setShowPasswordModal(false);
-    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setIsSaving(true);
+    try {
+      await api.post<{ ok: boolean; message: string }>("/api/v1/auth/change-password", {
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+      });
+      toast.success("Password changed successfully!");
+      setShowPasswordModal(false);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const initials =
@@ -278,6 +313,7 @@ export default function SuperAdminProfilePage() {
           description="Update your administrator profile name"
           onSave={handleEditSave}
           saveText="Save Changes"
+          isSubmitting={isSaving}
         >
           <div className="space-y-4">
             <div>
@@ -307,6 +343,7 @@ export default function SuperAdminProfilePage() {
           description="Ensure master account security"
           onSave={handlePasswordChange}
           saveText="Update Password"
+          isSubmitting={isSaving}
         >
           <div className="space-y-4">
             <div>

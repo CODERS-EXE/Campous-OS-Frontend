@@ -50,6 +50,18 @@ export const useAuthStore = create<AuthState>()(
         api.setAuth(accessToken, college?.id ?? null, college?.subdomain ?? null);
       },
     }),
-    { name: "campusos-auth" }
+    {
+      name: "campusos-auth",
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          api.setAuth(
+            state.accessToken,
+            state.college?.id ?? null,
+            state.college?.subdomain ?? null
+          );
+        }
+      },
+    }
   )
 );
+

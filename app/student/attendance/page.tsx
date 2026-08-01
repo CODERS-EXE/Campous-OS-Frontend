@@ -14,8 +14,8 @@ export default function StudentAttendancePage() {
   const { user } = useAuthStore();
 
   const attendanceQuery = useQuery<Attendance[]>({
-    queryKey: ["attendance", "all"],
-    queryFn: () => api.get<Attendance[]>("/api/v1/attendance/mine"),
+    queryKey: ["attendance", "student"],
+    queryFn: () => api.get<Attendance[]>("/api/v1/attendance/student"),
     enabled: !!user,
   });
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { PlusCircle, RefreshCcw, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
@@ -18,10 +19,12 @@ import { BookOpen, Layers } from "lucide-react";
 export default function FacultyAttendancePage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const preSelectedSubject = searchParams.get("subject");
   const [selectedAttendanceId, setSelectedAttendanceId] = useState<string | null>(null);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [sessionName, setSessionName] = useState("");
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(preSelectedSubject || "");
   const [statusByStudent, setStatusByStudent] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
 
@@ -76,10 +79,22 @@ export default function FacultyAttendancePage() {
       setStatusByStudent(nextStatus);
       return;
     }
+    // Reset form when starting new session
+    setDate(new Date().toISOString().slice(0, 10));
+    setSessionName("");
+    setMessage(null);
+    // Reset all students to absent
+    if (studentsQuery.data) {
+      const nextStatus: Record<string, string> = {};
+      studentsQuery.data.forEach((student) => {
+        nextStatus[student.user_id] = "absent";
+      });
+      setStatusByStudent(nextStatus);
+    }
     if (profileQuery.data?.subjects?.length) {
       setSubject((prev) => prev || (profileQuery.data?.subjects[0] ?? ""));
     }
-  }, [selectedAttendance, profileQuery.data]);
+  }, [selectedAttendance, profileQuery.data, studentsQuery.data]);
 
   useEffect(() => {
     if (!studentsQuery.data || Object.keys(statusByStudent).length > 0) return;
@@ -88,7 +103,11 @@ export default function FacultyAttendancePage() {
       nextStatus[student.user_id] = "absent";
     });
     setStatusByStudent(nextStatus);
-  }, [studentsQuery.data, statusByStudent]);
+  // Initialise all students as absent — run only when students data changes.
+  // statusByStudent is intentionally excluded: including it would cause an
+  // infinite loop (setState inside effect depending on state it sets).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentsQuery.data]);
 
   const studentRows = useMemo(() => {
     return (

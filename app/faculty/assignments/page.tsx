@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pen, PlusCircle } from "lucide-react";
+import { Pen, PlusCircle, Trash2 } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,17 @@ export default function FacultyAssignmentsPage() {
     queryKey: ["assignments"],
     queryFn: () => api.get<Assignment[]>("/api/v1/assignments?limit=50"),
     enabled: !!user,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (assignmentId: string) => api.deleteAssignment(assignmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      if (selectedAssignmentId) setSelectedAssignmentId(null);
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to delete assignment.");
+    },
   });
 
   const assignmentMutation = useMutation({
@@ -194,6 +205,19 @@ export default function FacultyAssignmentsPage() {
                         <span>{assignment.published ? "Published" : "Draft"}</span>
                         <Button variant="outline" size="sm" onClick={() => setSelectedAssignmentId(assignment.id)}>
                           <Pen className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => {
+                            if (window.confirm(`Delete "${assignment.title}"?`)) {
+                              deleteMutation.mutate(assignment.id);
+                            }
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </Button>
                       </div>
                     </div>

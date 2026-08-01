@@ -26,22 +26,18 @@ export default function ParentAttendancePage() {
   }, []);
 
   const studentsQuery = useQuery<Student[]>({
-    queryKey: ["students", "all"],
-    queryFn: () => api.get<Student[]>("/api/v1/users/students"),
+    queryKey: ["my-children"],
+    queryFn: () => api.get<Student[]>("/api/v1/users/my-children"),
     enabled: !!user,
   });
 
   const attendanceQuery = useQuery<Attendance[]>({
-    queryKey: ["attendance", "all"],
-    queryFn: () => api.get<Attendance[]>("/api/v1/attendance/mine"),
+    queryKey: ["attendance", "student"],
+    queryFn: () => api.get<Attendance[]>("/api/v1/attendance/student"),
     enabled: !!user,
   });
 
-  const myChildren = useMemo(() => {
-    if (!user?.profile?.student_ids || !studentsQuery.data) return [];
-    const childIds = user.profile.student_ids as string[];
-    return studentsQuery.data.filter((student) => childIds.includes(student.user_id));
-  }, [user, studentsQuery.data]);
+  const myChildren = studentsQuery.data ?? [];
 
   // Auto-select first child if none selected
   useMemo(() => {
