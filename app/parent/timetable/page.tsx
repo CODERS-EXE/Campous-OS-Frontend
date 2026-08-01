@@ -34,7 +34,7 @@ export default function ParentTimetablePage() {
 
   const myChildren = studentsQuery.data ?? [];
 
-  useMemo(() => {
+  useEffect(() => {
     if (!selectedChildId && myChildren.length > 0) {
       setSelectedChildId(myChildren[0].user_id);
     }

@@ -365,7 +365,7 @@ export default function ExamResultsPage() {
                     <div className="p-12 text-center">
                       <p className="text-muted-foreground">No results found for this exam</p>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Click "Calculate Results" to generate results
+                        Click &quot;Calculate Results&quot; to generate results
                       </p>
                     </div>
                   )}

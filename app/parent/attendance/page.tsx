@@ -40,7 +40,7 @@ export default function ParentAttendancePage() {
   const myChildren = studentsQuery.data ?? [];
 
   // Auto-select first child if none selected
-  useMemo(() => {
+  useEffect(() => {
     if (!selectedChildId && myChildren.length > 0) {
       setSelectedChildId(myChildren[0].user_id);
     }
