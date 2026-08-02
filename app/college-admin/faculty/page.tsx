@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, Faculty, UpdateUserPayload } from "@/lib/api";
+import { api, Faculty, Student, UpdateUserPayload } from "@/lib/api";
 import { DataTable, ColumnDef, FilterOption } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Edit2, Trash2, UserPlus, BookOpen, User, Mail, Building, Briefcase, CheckCircle } from "lucide-react";
@@ -21,6 +21,8 @@ interface FacultyForm extends Omit<UpdateUserPayload, "subjects"> {
   department: string;
   designation: string;
   status: string;
+  year: string;
+  semester: string;
   subjects: string;
 }
 
@@ -29,6 +31,7 @@ export default function FacultyPage() {
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [assignedStudentIds, setAssignedStudentIds] = useState<string[]>([]);
 
   const [form, setForm] = useState<FacultyForm>({
     name: "",
@@ -37,12 +40,19 @@ export default function FacultyPage() {
     department: "",
     designation: "",
     status: "active",
+    year: "",
+    semester: "",
     subjects: "",
   });
 
   const { data: faculty = [], isLoading } = useQuery({
     queryKey: ["faculty"],
     queryFn: () => api.get<Faculty[]>("/api/v1/users/faculty"),
+  });
+
+  const { data: students = [] } = useQuery<Student[]>({
+    queryKey: ["all-students"],
+    queryFn: () => api.get<Student[]>("/api/v1/users/students"),
   });
 
   const departments = useMemo(
@@ -60,13 +70,17 @@ export default function FacultyPage() {
         department: body.department,
         designation: body.designation,
         status: body.status,
+        year: body.year ? parseInt(body.year) : undefined,
+        semester: body.semester ? parseInt(body.semester) : undefined,
         subjects: body.subjects.split(",").map((subject) => subject.trim()).filter(Boolean),
+        student_ids: assignedStudentIds,
       }),
     onSuccess: () => {
       setMessage("Faculty profile created successfully.");
       setError("");
       setSelectedFaculty(null);
-      setForm({ name: "", email: "", password: "", department: "", designation: "", status: "active", subjects: "" });
+      setAssignedStudentIds([]);
+      setForm({ name: "", email: "", password: "", department: "", designation: "", status: "active", year: "", semester: "", subjects: "" });
       queryClient.invalidateQueries({ queryKey: ["faculty"] });
     },
     onError: (err: Error) => setError(err.message),
@@ -75,11 +89,24 @@ export default function FacultyPage() {
   const updateMutation = useMutation({
     mutationFn: (body: { id: string; payload: UpdateUserPayload }) =>
       api.patch<Faculty>(`/api/v1/users/${body.id}`, body.payload),
-    onSuccess: () => {
+    onSuccess: async (updatedFaculty: Faculty) => {
+      console.log("✅ Update response received:", updatedFaculty);
+      console.log("📊 Student IDs in response:", updatedFaculty.student_ids);
+      console.log("📏 Count:", updatedFaculty.student_ids?.length ?? 0);
+      
       setMessage("Faculty profile updated successfully.");
       setError("");
       setSelectedFaculty(null);
-      setForm({ name: "", email: "", password: "", department: "", designation: "", status: "active", subjects: "" });
+      setAssignedStudentIds([]);
+      setForm({ name: "", email: "", password: "", department: "", designation: "", status: "active", year: "", semester: "", subjects: "" });
+      
+      // Optimistic update: immediately update cache with new data
+      queryClient.setQueryData<Faculty[]>(["faculty"], (old) => {
+        if (!old) return [updatedFaculty];
+        return old.map((f) => (f.user_id === updatedFaculty.user_id ? updatedFaculty : f));
+      });
+      
+      // Then refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["faculty"] });
     },
     onError: (err: Error) => setError(err.message),
@@ -101,17 +128,25 @@ export default function FacultyPage() {
     setMessage("");
 
     if (selectedFaculty) {
+      const payload = {
+        name: form.name,
+        email: form.email,
+        password: form.password || undefined,
+        department: form.department,
+        designation: form.designation,
+        status: form.status,
+        year: form.year ? parseInt(form.year) : undefined,
+        semester: form.semester ? parseInt(form.semester) : undefined,
+        subjects: form.subjects.split(",").map((subject) => subject.trim()).filter(Boolean),
+        student_ids: assignedStudentIds,
+      };
+      
+      console.log("📤 Sending update payload:", payload);
+      console.log("📊 Assigned student IDs count:", assignedStudentIds.length);
+      
       updateMutation.mutate({
         id: selectedFaculty.user_id,
-        payload: {
-          name: form.name,
-          email: form.email,
-          password: form.password || undefined,
-          department: form.department,
-          designation: form.designation,
-          status: form.status,
-          subjects: form.subjects.split(",").map((subject) => subject.trim()).filter(Boolean),
-        },
+        payload,
       });
       return;
     }
@@ -123,6 +158,7 @@ export default function FacultyPage() {
     setSelectedFaculty(facultyMember);
     setMessage("");
     setError("");
+    setAssignedStudentIds(facultyMember.student_ids ?? []);
     setForm({
       name: facultyMember.name,
       email: facultyMember.email,
@@ -130,6 +166,8 @@ export default function FacultyPage() {
       department: facultyMember.department,
       designation: facultyMember.designation ?? "",
       status: facultyMember.status ?? "active",
+      year: facultyMember.year?.toString() ?? "",
+      semester: facultyMember.semester?.toString() ?? "",
       subjects: facultyMember.subjects.join(", "),
     });
   };
@@ -144,7 +182,8 @@ export default function FacultyPage() {
     setSelectedFaculty(null);
     setError("");
     setMessage("");
-    setForm({ name: "", email: "", password: "", department: "", designation: "", status: "active", subjects: "" });
+    setAssignedStudentIds([]);
+    setForm({ name: "", email: "", password: "", department: "", designation: "", status: "active", year: "", semester: "", subjects: "" });
   };
 
   // Define Table Columns
@@ -185,6 +224,11 @@ export default function FacultyPage() {
       accessorKey: "status",
       sortable: true,
       cell: (row) => <StatusBadge status={row.status || "active"} />,
+    },
+    {
+      header: "Assigned Students",
+      id: "assigned_students",
+      cell: (row) => <span className="text-xs font-semibold text-muted-foreground">{row.student_ids?.length ?? 0}</span>,
     },
     {
       header: "Actions",
@@ -293,6 +337,40 @@ export default function FacultyPage() {
                     icon={Building}
                   />
 
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormSelect
+                      id="year"
+                      label="Year"
+                      value={form.year}
+                      onChange={(val) => setForm({ ...form, year: val })}
+                      options={[
+                        { value: "", label: "Select Year" },
+                        { value: "1", label: "First Year" },
+                        { value: "2", label: "Second Year" },
+                        { value: "3", label: "Third Year" },
+                        { value: "4", label: "Fourth Year" },
+                      ]}
+                    />
+
+                    <FormSelect
+                      id="semester"
+                      label="Semester"
+                      value={form.semester}
+                      onChange={(val) => setForm({ ...form, semester: val })}
+                      options={[
+                        { value: "", label: "Select Semester" },
+                        { value: "1", label: "Semester 1" },
+                        { value: "2", label: "Semester 2" },
+                        { value: "3", label: "Semester 3" },
+                        { value: "4", label: "Semester 4" },
+                        { value: "5", label: "Semester 5" },
+                        { value: "6", label: "Semester 6" },
+                        { value: "7", label: "Semester 7" },
+                        { value: "8", label: "Semester 8" },
+                      ]}
+                    />
+                  </div>
+
                   <FormField
                     id="designation"
                     label="Designation"
@@ -323,6 +401,28 @@ export default function FacultyPage() {
                     placeholder="Data Structures, Algorithms"
                     icon={BookOpen}
                   />
+
+                  <div className="space-y-2">
+                    <Label htmlFor="student_ids">Assign Students</Label>
+                    <select
+                      id="student_ids"
+                      multiple
+                      value={assignedStudentIds}
+                      onChange={(event) =>
+                        setAssignedStudentIds(Array.from(event.target.selectedOptions, (option) => option.value))
+                      }
+                      className="mt-2 min-h-[160px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {students.map((student) => (
+                        <option key={student.user_id} value={student.user_id}>
+                          {student.name} — {student.roll_no} — {student.department}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Hold Ctrl/Cmd to select multiple students. Assigning students explicitly will keep the faculty mapping in sync.
+                    </p>
+                  </div>
 
                   {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
                   {message && <p className="text-xs text-emerald-500 font-semibold">{message}</p>}

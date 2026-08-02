@@ -6,7 +6,7 @@ import { BookOpen, GraduationCap } from "lucide-react";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { api, Assignment, Result } from "@/lib/api";
+import { api, Assignment, Result, TimetableEntry } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 
 export default function StudentSubjectsPage() {
@@ -24,20 +24,33 @@ export default function StudentSubjectsPage() {
     enabled: !!user?.id,
   });
 
+  // Timetable subjects — from scheduled classes
+  const timetableQuery = useQuery<TimetableEntry[]>({
+    queryKey: ["timetable", "student"],
+    queryFn: () => api.get<TimetableEntry[]>("/api/v1/timetable/student"),
+    enabled: !!user,
+  });
+
   const subjects = useMemo(() => {
-    const subjectMap: Record<string, { assignments: number; results: number }> = {};
+    const subjectMap: Record<string, { assignments: number; results: number; from_timetable: boolean }> = {};
+
+    // Add subjects from timetable (most reliable source)
+    timetableQuery.data?.forEach((entry) => {
+      const subject = entry.subject || "General";
+      if (!subjectMap[subject]) subjectMap[subject] = { assignments: 0, results: 0, from_timetable: true };
+    });
     
     // Count assignments per subject
     assignmentsQuery.data?.forEach((assignment) => {
       const subject = assignment.subject || "General";
-      if (!subjectMap[subject]) subjectMap[subject] = { assignments: 0, results: 0 };
+      if (!subjectMap[subject]) subjectMap[subject] = { assignments: 0, results: 0, from_timetable: false };
       if (assignment.published) subjectMap[subject].assignments++;
     });
 
     // Count results per subject
     resultsQuery.data?.forEach((result) => {
       const subject = result.subject || "General";
-      if (!subjectMap[subject]) subjectMap[subject] = { assignments: 0, results: 0 };
+      if (!subjectMap[subject]) subjectMap[subject] = { assignments: 0, results: 0, from_timetable: false };
       subjectMap[subject].results++;
     });
 
@@ -45,7 +58,7 @@ export default function StudentSubjectsPage() {
       name,
       ...data,
     }));
-  }, [assignmentsQuery.data, resultsQuery.data]);
+  }, [assignmentsQuery.data, resultsQuery.data, timetableQuery.data]);
 
   return (
     <AuthGuard allowedRoles={["student"]}>
@@ -93,7 +106,7 @@ export default function StudentSubjectsPage() {
               <CardDescription>Overview of all your enrolled subjects</CardDescription>
             </CardHeader>
             <CardContent>
-              {assignmentsQuery.isLoading || resultsQuery.isLoading ? (
+              {assignmentsQuery.isLoading || resultsQuery.isLoading || timetableQuery.isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading subjects...</p>
               ) : subjects.length === 0 ? (
                 <div className="py-8 text-center">

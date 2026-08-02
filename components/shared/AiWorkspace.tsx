@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   Check,
@@ -9,16 +9,12 @@ import {
   Loader2,
   Mic,
   MicOff,
-  Paperclip,
-  RefreshCw,
   Send,
   Sparkles,
   Trash2,
   User as UserIcon,
   X,
-  Code2,
   Terminal,
-  HelpCircle,
   BrainCircuit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -321,7 +317,7 @@ export function AiWorkspace() {
     setIsLoading(true);
 
     try {
-      const res = await api.sendAiMessage(text || "Analyzed uploaded attachment.");
+      const res = await api.sendAiMessage(text || "Please analyze the attached image.", selectedImage || null);
       const assistantMsg: ExtendedAiChatMessage = {
         id: `ai-${Date.now()}`,
         sender: "assistant",
@@ -516,9 +512,11 @@ export function AiWorkspace() {
               variant="outline"
               size="sm"
               className="border-destructive/30 hover:bg-destructive/20 rounded-xl text-xs"
-              onClick={() => handleSendMessage()}
+              onClick={() => {
+                setError(null);
+              }}
             >
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry
+              <X className="mr-1.5 h-3.5 w-3.5" /> Dismiss
             </Button>
           </div>
         )}

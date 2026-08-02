@@ -35,6 +35,7 @@ export default function ExamSchedulePage() {
   const [maxMarks, setMaxMarks] = useState<number>(100);
   const [passingMarks, setPassingMarks] = useState<number>(40);
   const [roomNumbers, setRoomNumbers] = useState("");
+  const [facultyId, setFacultyId] = useState("");
 
   // Pre-select exam if coming from exams page
   useEffect(() => {
@@ -70,6 +71,11 @@ export default function ExamSchedulePage() {
     queryFn: () => api.getExams(),
   });
 
+  const { data: facultyList = [] } = useQuery<import("@/lib/api").Faculty[]>({
+    queryKey: ["faculty"],
+    queryFn: () => api.get<import("@/lib/api").Faculty[]>("/api/v1/users/faculty"),
+  });
+
   const scheduleMutation = useMutation({
     mutationFn: (payload: {
       examId: string;
@@ -84,6 +90,7 @@ export default function ExamSchedulePage() {
       passing_marks: number;
       credits: number;
       room_numbers: string[];
+      faculty_id?: string;
     }) =>
       api.scheduleSubjectExam(payload.examId, {
         subject_id: payload.subject_id,
@@ -97,6 +104,7 @@ export default function ExamSchedulePage() {
         passing_marks: payload.passing_marks,
         credits: 3,
         room_numbers: payload.room_numbers,
+        faculty_id: payload.faculty_id,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subject-exams"] });
@@ -149,6 +157,7 @@ export default function ExamSchedulePage() {
     setMaxMarks(100);
     setPassingMarks(40);
     setRoomNumbers("");
+    setFacultyId("");
     setIsEditMode(false);
     setEditingSubjectId(null);
   };
@@ -166,6 +175,7 @@ export default function ExamSchedulePage() {
     setMaxMarks(subject.max_marks);
     setPassingMarks(subject.passing_marks);
     setRoomNumbers(subject.room_numbers?.join(", ") || "");
+    setFacultyId(subject.faculty_id || "");
     setIsModalOpen(true);
   };
 
@@ -219,6 +229,7 @@ export default function ExamSchedulePage() {
         subject_code: subjectCode,
         ...payload,
         credits: 3,
+        faculty_id: facultyId || undefined,
       });
     }
   };
@@ -307,6 +318,11 @@ export default function ExamSchedulePage() {
                         {subjectExam.status}
                       </span>
                     </div>
+                    {subjectExam.faculty_id && (
+                      <p className="text-xs text-muted-foreground">
+                        Faculty: {facultyList.find(f => f.user_id === subjectExam.faculty_id)?.name || subjectExam.faculty_id}
+                      </p>
+                    )}
 
                     <div className="flex gap-2 pt-2 flex-wrap">
                       <Button variant="outline" size="sm" onClick={() => handleEditSchedule(subjectExam)}>
@@ -414,6 +430,24 @@ export default function ExamSchedulePage() {
                         className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-muted-foreground">
+                      Assign Faculty (for marks entry)
+                    </label>
+                    <select
+                      value={facultyId}
+                      onChange={(e) => setFacultyId(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Auto-detect from subjects (or leave blank)</option>
+                      {facultyList.map((f) => (
+                        <option key={f.user_id} value={f.user_id}>
+                          {f.name} — {f.department} | {f.subjects?.join(", ") || "No subjects"}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">

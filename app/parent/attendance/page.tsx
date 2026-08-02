@@ -63,7 +63,7 @@ export default function ParentAttendancePage() {
     }> = [];
 
     attendanceQuery.data.forEach((attendance) => {
-      const record = attendance.records.find((r) => r.student_id === selectedChildId);
+      const record = attendance.records.find((r) => r.student_id === selectedChildId || r.student_id?.toString() === selectedChildId?.toString());
       if (record) {
         records.push({
           id: attendance.id,

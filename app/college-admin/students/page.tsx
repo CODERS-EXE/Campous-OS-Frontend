@@ -97,7 +97,7 @@ export default function StudentsPage() {
 
     if (selectedStudent) {
       updateMutation.mutate({
-        id: selectedStudent.id,
+        id: selectedStudent.user_id,
         payload: {
           name: form.name,
           email: form.email,
@@ -133,7 +133,7 @@ export default function StudentsPage() {
 
   const handleDelete = (student: Student) => {
     if (window.confirm(`Delete student ${student.name}?`)) {
-      deleteMutation.mutate(student.id);
+      deleteMutation.mutate(student.user_id);
     }
   };
 

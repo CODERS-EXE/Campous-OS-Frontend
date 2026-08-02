@@ -55,8 +55,8 @@ export default function ParentProfilePage() {
   });
 
   const studentsQuery = useQuery<Student[]>({
-    queryKey: ["students", "all"],
-    queryFn: () => api.get<Student[]>("/api/v1/users/students"),
+    queryKey: ["my-children"],
+    queryFn: () => api.getMyChildren(),
     enabled: !!user,
   });
 

@@ -47,7 +47,10 @@ export default function ParentTimetablePage() {
 
   const timetableQuery = useQuery<TimetableEntry[]>({
     queryKey: ["timetable", "student", selectedChildId],
-    queryFn: () => api.get<TimetableEntry[]>("/api/v1/timetable/student"),
+    queryFn: () =>
+      api.get<TimetableEntry[]>(
+        `/api/v1/timetable/student${selectedChildId ? `?child_user_id=${selectedChildId}` : ""}`
+      ),
     enabled: !!selectedChildId,
   });
 

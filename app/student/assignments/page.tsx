@@ -28,21 +28,8 @@ export default function StudentAssignmentsPage() {
 
   const submissionsQuery = useQuery<Submission[]>({
     queryKey: ["submissions", "my"],
-    queryFn: async () => {
-      // Get submissions for each assignment
-      const assignments = assignmentsQuery.data || [];
-      const allSubmissions: Submission[] = [];
-      for (const assignment of assignments) {
-        try {
-          const subs = await api.get<Submission[]>(`/api/v1/assignments/${assignment.id}/submissions`);
-          allSubmissions.push(...subs.filter(s => s.student_id === user?.id));
-        } catch {
-          // Ignore errors for individual assignments
-        }
-      }
-      return allSubmissions;
-    },
-    enabled: !!user && !!assignmentsQuery.data,
+    queryFn: () => api.get<Submission[]>("/api/v1/assignments/my-submissions"),
+    enabled: !!user,
   });
 
   const submitMutation = useMutation({

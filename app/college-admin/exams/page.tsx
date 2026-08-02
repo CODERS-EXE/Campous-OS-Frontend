@@ -118,7 +118,7 @@ export default function CollegeAdminExamsPage() {
     setViewDetailsExam(exam);
     // Fetch subjects for this exam
     try {
-      const subjects = await api.get(`/exams/${exam.id}/subjects`);
+      const subjects = await api.getSubjectExams(exam.id);
       setExamSubjects(subjects || []);
     } catch (error) {
       console.error("Failed to fetch subjects", error);

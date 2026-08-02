@@ -1,23 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, ExamResult } from "@/lib/api";
+import { api, ExamResult, Student } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export default function ParentExamResultsPage() {
   const { user } = useAuthStore();
-  const studentIds = (user?.profile as { student_ids?: string[] })?.student_ids || [];
-  const studentId = studentIds[0] || user?.id || "";
+  // Parent can have multiple children — support switching between them
+  const rawChildIds: string[] = (user?.profile as { student_ids?: string[] })?.student_ids || [];
+
+  const { data: children = [], isLoading: isLoadingChildren } = useQuery<Student[]>({
+    queryKey: ["my-children"],
+    queryFn: () => api.get<Student[]>("/api/v1/users/my-children"),
+    enabled: rawChildIds.length > 0,
+  });
+
+  const [selectedChildId, setSelectedChildId] = useState<string>("");
+  // Use first child as default once loaded
+  const effectiveChildId = selectedChildId || children[0]?.user_id || rawChildIds[0] || user?.id || "";
 
   const { data: results, isLoading } = useQuery<ExamResult[]>({
-    queryKey: ["child-results", studentId],
-    queryFn: () => api.getStudentAllResults(studentId),
-    enabled: !!studentId,
+    queryKey: ["child-results", effectiveChildId],
+    queryFn: () => api.getStudentAllResults(effectiveChildId),
+    enabled: !!effectiveChildId,
   });
 
   const getTrendIcon = (current: number, previous: number) => {
@@ -27,6 +38,8 @@ export default function ParentExamResultsPage() {
       return <TrendingDown className="h-4 w-4 text-red-600" />;
     return <Minus className="h-4 w-4 text-gray-600" />;
   };
+
+  const selectedChild = children.find(c => c.user_id === effectiveChildId);
 
   return (
     <AuthGuard allowedRoles={["parent"]}>
@@ -38,6 +51,26 @@ export default function ParentExamResultsPage() {
               Monitor your child&apos;s academic performance and exam results
             </p>
           </div>
+
+          {/* Child Selection (if multiple children) */}
+          {children.length > 1 && (
+            <Card className="p-4">
+              <div className="flex items-center gap-4">
+                <label className="text-sm font-medium">Select Child:</label>
+                <select
+                  value={selectedChildId}
+                  onChange={(e) => setSelectedChildId(e.target.value)}
+                  className="px-3 py-2 border rounded-lg"
+                >
+                  {children.map(child => (
+                    <option key={child.user_id} value={child.user_id}>
+                      {child.name} - {child.roll_no}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Card>
+          )}
 
           {isLoading ? (
             <div className="space-y-4">

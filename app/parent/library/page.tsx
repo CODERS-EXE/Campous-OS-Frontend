@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -9,7 +10,7 @@ import {
   Clock,
   IndianRupee,
 } from "lucide-react";
-import { api, LibraryIssue } from "@/lib/api";
+import { api, LibraryIssue, Student } from "@/lib/api";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,7 @@ function StatusBadge({ status, isOverdue }: { status: string; isOverdue: boolean
     damaged: "bg-orange-100 text-orange-700",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${map[label] || map["issued"]}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${map[label] ?? map["issued"]}`}>
       {label}
     </span>
   );
@@ -33,15 +34,26 @@ function StatusBadge({ status, isOverdue }: { status: string; isOverdue: boolean
 
 export default function ParentLibraryPage() {
   const { user } = useAuthStore();
-  const studentId =
-    user?.profile?.student_ids && Array.isArray(user.profile.student_ids) && user.profile.student_ids.length > 0
-      ? (user.profile.student_ids as string[])[0]
-      : undefined;
+
+  const rawChildIds: string[] =
+    user?.profile?.student_ids && Array.isArray(user.profile.student_ids)
+      ? (user.profile.student_ids as string[])
+      : [];
+
+  // Fetch children list for the selector
+  const { data: children = [] } = useQuery<Student[]>({
+    queryKey: ["my-children"],
+    queryFn: () => api.get<Student[]>("/api/v1/users/my-children"),
+    enabled: rawChildIds.length > 0,
+  });
+
+  const [selectedChildId, setSelectedChildId] = useState<string>("");
+  const effectiveChildId = selectedChildId || children[0]?.user_id || rawChildIds[0] || "";
 
   const { data: issues = [], isLoading } = useQuery<LibraryIssue[]>({
-    queryKey: ["library-issues-parent", studentId],
-    queryFn: () => api.getLibraryIssues({ user_id: studentId }),
-    enabled: !!studentId,
+    queryKey: ["library-issues-parent", effectiveChildId],
+    queryFn: () => api.getLibraryIssues({ user_id: effectiveChildId }),
+    enabled: !!effectiveChildId,
   });
 
   const now = new Date();
@@ -49,11 +61,13 @@ export default function ParentLibraryPage() {
   const overdueIssues = issues.filter((i) => i.status === "issued" && new Date(i.due_date) < now);
   const pendingFine = issues.reduce((sum, i) => sum + (i.fine_paid ? 0 : i.fine_amount), 0);
 
+  const selectedChild = children.find((c) => c.user_id === effectiveChildId);
+
   return (
     <AuthGuard allowedRoles={["parent"]}>
       <DashboardShell title="Child's Library">
         <div className="space-y-6">
-          {!studentId ? (
+          {rawChildIds.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <BookOpen className="h-14 w-14 mb-4 opacity-30" />
               <p className="font-medium">No student linked to your account.</p>
@@ -61,6 +75,30 @@ export default function ParentLibraryPage() {
             </div>
           ) : (
             <>
+              {/* Child selector — shown only when multiple children */}
+              {children.length > 1 && (
+                <Card className="p-4">
+                  <label className="block text-sm font-medium mb-2">Select Child</label>
+                  <select
+                    value={effectiveChildId}
+                    onChange={(e) => setSelectedChildId(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {children.map((child) => (
+                      <option key={child.user_id} value={child.user_id}>
+                        {child.name} — Roll: {child.roll_no} ({child.department})
+                      </option>
+                    ))}
+                  </select>
+                </Card>
+              )}
+
+              {selectedChild && (
+                <div className="text-sm text-muted-foreground">
+                  Viewing library activity for <span className="font-semibold text-foreground">{selectedChild.name}</span>
+                </div>
+              )}
+
               {/* Summary */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
@@ -94,7 +132,7 @@ export default function ParentLibraryPage() {
                       {overdueIssues.length} book{overdueIssues.length > 1 ? "s" : ""} overdue
                     </p>
                     <p className="text-sm text-red-600 dark:text-red-500 mt-0.5">
-                      Please remind your child to return the overdue book{overdueIssues.length > 1 ? "s" : ""} to avoid additional fines (₹2/day).
+                      Please remind your child to return the overdue book{overdueIssues.length > 1 ? "s" : ""} to avoid additional fines (₹{2}/day).
                     </p>
                   </div>
                 </div>

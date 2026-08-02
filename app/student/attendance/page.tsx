@@ -30,7 +30,7 @@ export default function StudentAttendancePage() {
     }> = [];
 
     attendanceQuery.data?.forEach((attendance) => {
-      const myRecord = attendance.records.find((r) => r.student_id === user?.id);
+      const myRecord = attendance.records.find((r) => r.student_id === user?.id || r.student_id?.toString() === user?.id?.toString());
       if (myRecord) {
         records.push({
           id: attendance.id,

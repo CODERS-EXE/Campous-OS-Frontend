@@ -62,6 +62,18 @@ export default function FacultyAttendancePage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete<{ ok: boolean }>(`/api/v1/attendance/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance", "mine"] });
+      setSelectedAttendanceId(null);
+      setMessage("Attendance record deleted.");
+    },
+    onError: (error) => {
+      setMessage(error instanceof Error ? error.message : "Unable to delete attendance.");
+    },
+  });
+
   const selectedAttendance = useMemo(
     () => attendanceQuery.data?.find((item) => item.id === selectedAttendanceId) ?? null,
     [attendanceQuery.data, selectedAttendanceId]
@@ -318,22 +330,42 @@ export default function FacultyAttendancePage() {
                   <p className="text-xs text-muted-foreground text-center py-8">No attendance records yet.</p>
                 )}
                 {sessions.map((session) => (
-                  <button
+                  <div
                     key={session.id}
-                    type="button"
-                    onClick={() => setSelectedAttendanceId(session.id)}
                     className={`w-full rounded-2xl border p-3 text-left transition-all text-xs ${
                       selectedAttendanceId === session.id
                         ? "border-indigo-500/60 bg-indigo-500/10"
                         : "border-border/60 bg-background/50 hover:border-indigo-500/40 hover:bg-muted/30"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-bold text-foreground">{session.subject}</p>
-                      <span className="text-muted-foreground shrink-0">{formatDate(session.created_at)}</span>
+                    <button
+                      type="button"
+                      className="w-full text-left"
+                      onClick={() => setSelectedAttendanceId(session.id)}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-bold text-foreground">{session.subject}</p>
+                        <span className="text-muted-foreground shrink-0">{formatDate(session.created_at)}</span>
+                      </div>
+                      <p className="text-muted-foreground mt-0.5">{session.session_name || "Session"} • {session.records.length} students</p>
+                    </button>
+                    <div className="flex justify-end mt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm("Delete this attendance record?")) {
+                            deleteMutation.mutate(session.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Delete
+                      </Button>
                     </div>
-                    <p className="text-muted-foreground mt-0.5">{session.session_name || "Session"} • {session.records.length} students</p>
-                  </button>
+                  </div>
                 ))}
               </CardContent>
             </Card>

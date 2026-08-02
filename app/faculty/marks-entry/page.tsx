@@ -183,9 +183,9 @@ export default function MarksEntryPage() {
                               type="number"
                               className="w-24"
                               placeholder="0"
+                              min={0}
                               value={curInternal}
                               onChange={(e) => handleMarkChange(student.id, "internal", e.target.value, student.internal_marks, student.external_marks)}
-                              disabled={student.attendance !== "present"}
                             />
                           </td>
                           <td className="py-3">
@@ -193,9 +193,9 @@ export default function MarksEntryPage() {
                               type="number"
                               className="w-24"
                               placeholder="0"
+                              min={0}
                               value={curExternal}
                               onChange={(e) => handleMarkChange(student.id, "external", e.target.value, student.internal_marks, student.external_marks)}
-                              disabled={student.attendance !== "present"}
                             />
                           </td>
                           <td className="py-3 font-semibold">

@@ -64,8 +64,10 @@ export default function ExamResultsPage() {
   const handleViewResults = async (exam: Exam) => {
     setViewResultsExam(exam);
     try {
-      // Fetch all results for this exam
-      const response = await api.get(`/exams/${exam.id}/results`);
+      // Fetch all results for this exam via ExamAnalytics endpoint
+      // We use the student results by querying each student, but since admin
+      // needs aggregate view, fetch via analytics
+      const response = await api.get<any[]>(`/api/v1/exams/analytics/exam-results?exam_id=${exam.id}`).catch(() => []);
       setExamResults(response || []);
     } catch (error) {
       console.error("Failed to fetch results", error);

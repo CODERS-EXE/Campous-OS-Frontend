@@ -202,7 +202,7 @@ export default function CollegeAdminLibraryPage() {
       qc.invalidateQueries({ queryKey: ["library-books"] });
       qc.invalidateQueries({ queryKey: ["library-analytics"] });
       setShowReturnModal(false);
-      const fine = (res as { fine_amount?: number }).fine_amount;
+      const fine = res.fine_amount;
       toast.success(fine && fine > 0 ? `Book returned. Fine: ₹${fine.toFixed(2)}` : "Book returned successfully");
     },
     onError: (e) => toast.error((e as Error).message),
@@ -418,7 +418,10 @@ export default function CollegeAdminLibraryPage() {
                   <Button size="sm" onClick={() => setShowIssueModal(true)}>
                     <BookOpenCheck className="mr-2 h-4 w-4" /> Issue Book
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/library/export`, "_blank")}>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    api.exportLibraryReport()
+                      .catch(() => toast.error("Export failed"));
+                  }}>
                     <Download className="mr-2 h-4 w-4" /> Export
                   </Button>
                 </div>

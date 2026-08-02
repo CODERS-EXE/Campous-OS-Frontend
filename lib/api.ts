@@ -52,8 +52,8 @@ export class ApiClient {
   }
 
   // AI Assistant helpers
-  sendAiMessage(message: string) {
-    return this.post<AiChatResponse>("/api/v1/ai/chat", { message });
+  sendAiMessage(message: string, image_base64?: string | null) {
+    return this.post<AiChatResponse>("/api/v1/ai/chat", { message, image_base64: image_base64 ?? null });
   }
 
   getAiHistory() {
@@ -118,7 +118,11 @@ export class ApiClient {
       : "/api/v1/transport/my-bus";
     return this.get<MyBusResponse>(url);
   }
-
+ 
+  getMyChildren() {
+    return this.get<Student[]>("/api/v1/users/my-children");
+  }
+ 
   // Hostel API helpers
   getHostelStats() {
     return this.get<HostelStats>("/api/v1/hostel/stats");
@@ -318,6 +322,25 @@ export class ApiClient {
   getLibraryAnalytics() {
     return this.get<LibraryAnalytics>("/api/v1/library/analytics");
   }
+  exportLibraryReport(): Promise<void> {
+    // Authenticated CSV download using fetch + blob
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    return fetch(`${API_URL}/api/v1/library/export`, {
+      method: "GET",
+      headers: this.headers() as HeadersInit,
+    }).then(async (res) => {
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "library_report.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
 
   // Exam Management API helpers
   getExams(params?: { status?: string; academic_year?: string; semester?: number }) {
@@ -424,98 +447,18 @@ export class ApiClient {
     );
   }
 
-  // ============================================================================
-  // LIBRARY MANAGEMENT METHODS
-  // ============================================================================
-
-  // Analytics
-  getLibraryAnalytics() {
-    return this.get<LibraryAnalytics>("/api/v1/library/analytics");
-  }
-
-  // Categories
-  getLibraryCategories() {
-    return this.get<LibraryCategory[]>("/api/v1/library/categories");
-  }
-
-  createLibraryCategory(body: { name: string; description?: string }) {
-    return this.post<{ id: string; message: string }>("/api/v1/library/categories", body);
-  }
-
-  updateLibraryCategory(categoryId: string, body: { name?: string; description?: string }) {
-    return this.patch<{ message: string }>(`/api/v1/library/categories/${categoryId}`, body);
-  }
-
-  deleteLibraryCategory(categoryId: string) {
-    return this.delete<{ message: string }>(`/api/v1/library/categories/${categoryId}`);
-  }
-
-  // Books
-  getLibraryBooks(params?: { search?: string; category_id?: string }) {
-    const queryParams = new URLSearchParams();
-    if (params?.search) queryParams.set("search", params.search);
-    if (params?.category_id) queryParams.set("category_id", params.category_id);
-    const queryString = queryParams.toString();
-    return this.get<LibraryBook[]>(`/api/v1/library/books${queryString ? `?${queryString}` : ""}`);
-  }
-
-  getLibraryBook(bookId: string) {
-    return this.get<LibraryBook>(`/api/v1/library/books/${bookId}`);
-  }
-
-  createLibraryBook(body: {
-    title: string;
-    author: string;
-    isbn?: string;
-    publisher?: string;
-    edition?: string;
-    year?: number;
-    category_id?: string;
-    total_quantity?: number;
-    location?: string;
-    description?: string;
-    cover_url?: string;
-    language?: string;
-  }) {
-    return this.post<{ id: string; message: string }>("/api/v1/library/books", body);
-  }
-
-  updateLibraryBook(bookId: string, body: unknown) {
-    return this.patch<{ message: string }>(`/api/v1/library/books/${bookId}`, body);
-  }
-
-  deleteLibraryBook(bookId: string) {
-    return this.delete<{ message: string }>(`/api/v1/library/books/${bookId}`);
-  }
-
-  // Issues
-  getLibraryIssues() {
-    return this.get<LibraryIssue[]>("/api/v1/library/issues");
-  }
-
-  getMyLibraryIssues() {
-    return this.get<LibraryIssue[]>("/api/v1/library/my-issues");
-  }
-
-  issueLibraryBook(body: { book_id: string; user_id: string; due_days?: number; remarks?: string }) {
-    return this.post<{ id: string; message: string; due_date: string }>("/api/v1/library/issues", body);
-  }
-
-  returnLibraryBook(body: { issue_id: string; remarks?: string; is_lost?: boolean; is_damaged?: boolean }) {
-    return this.post<{ message: string; fine_amount?: number }>("/api/v1/library/return", body);
-  }
-
-  renewLibraryBook(body: { issue_id: string; additional_days?: number }) {
-    return this.post<{ message: string; new_due_date: string }>("/api/v1/library/renew", body);
-  }
-
-  payLibraryFine(issueId: string) {
-    return this.post<{ message: string }>(`/api/v1/library/fines/${issueId}/pay`, {});
-  }
-
   // Assign students to faculty
   assignStudentsToFaculty(facultyUserId: string, studentIds: string[]) {
     return this.patch<{ message: string; count: number }>(`/api/v1/users/faculty/${facultyUserId}/assign-students`, studentIds);
+  }
+
+  // Assignment API helpers
+  deleteAssignment(assignmentId: string) {
+    return this.delete<{ ok: boolean }>(`/api/v1/assignments/${assignmentId}`);
+  }
+
+  gradeSubmission(submissionId: string, marks: number) {
+    return this.patch<Submission>(`/api/v1/assignments/submissions/${submissionId}/grade?marks=${marks}`, {});
   }
 }
 
@@ -585,6 +528,7 @@ export interface Attendance {
   session_name?: string | null;
   records: StudentAttendanceRecord[];
   created_at: string;
+  updated_at?: string | null;
 }
 
 export interface Assignment {
@@ -627,6 +571,8 @@ export interface TimetableEntry {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  college_id?: string | null;
+  created_at?: string | null;
 }
 
 export interface Faculty {
@@ -636,9 +582,12 @@ export interface Faculty {
   email: string;
   department: string;
   course?: string;
+  year?: number;
+  semester?: number;
   designation?: string;
   status?: string;
   subjects: string[];
+  student_ids?: string[];
   avatar_url?: string;
   created_at?: string;
 }
@@ -1464,6 +1413,10 @@ export interface SubjectExam {
   passing_marks: number;
   credits: number;
   status: "scheduled" | "ongoing" | "completed" | "cancelled";
+  faculty_id?: string | null;
+  department?: string | null;
+  year?: number | null;
+  target_semester?: number | null;
   college_id: string;
   created_at: string;
   updated_at: string;
